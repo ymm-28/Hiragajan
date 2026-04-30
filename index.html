@@ -1,0 +1,2651 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ひらがじゃん 〜 ひらがな麻雀</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Klee+One:wght@400;600&family=Zen+Kaku+Gothic+New:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --felt-dark: #0d3a2c;
+    --felt: #14513e;
+    --felt-light: #1d6a52;
+    --tile-cream: #f7efd9;
+    --tile-cream-dk: #e8dab8;
+    --tile-edge: #c9b58a;
+    --ink: #1a1a1a;
+    --vermillion: #c8362c;
+    --vermillion-dk: #9b2a23;
+    --gold: #d4a64a;
+    --paper: #f4ecd8;
+    --shadow: rgba(0,0,0,.45);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-family: 'Zen Kaku Gothic New', sans-serif;
+    background: radial-gradient(ellipse at center, var(--felt-light) 0%, var(--felt) 45%, var(--felt-dark) 100%);
+    color: var(--paper);
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* 雀卓の繊維テクスチャ */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(0,0,0,.03) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.02) 0 1px, transparent 1px 3px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; }
+
+  /* ─── タイトル画面 ─── */
+  .title-screen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    text-align: center;
+  }
+  .title-mark {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 800;
+    color: var(--paper);
+    letter-spacing: .08em;
+    text-shadow: 0 4px 0 var(--felt-dark), 0 8px 24px rgba(0,0,0,.5);
+    line-height: 1.1;
+  }
+  .title-mark .big {
+    font-size: clamp(2.8rem, 11vw, 7rem);
+    display: block;
+    color: var(--gold);
+    text-shadow: 0 4px 0 #6b4d1e, 0 8px 24px rgba(0,0,0,.5);
+    white-space: nowrap;
+    letter-spacing: 0;
+  }
+  .title-mark .small {
+    font-size: clamp(1rem, 3vw, 1.6rem);
+    display: block;
+    margin-top: .5rem;
+    color: var(--paper);
+    letter-spacing: .4em;
+    text-shadow: none;
+  }
+  .title-stamp {
+    display: inline-block;
+    background: var(--vermillion);
+    color: var(--paper);
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    padding: .35rem 1.2rem;
+    margin: 1.5rem 0 2rem;
+    border-radius: 2px;
+    letter-spacing: .3em;
+    transform: rotate(-3deg);
+    box-shadow: 2px 3px 0 var(--vermillion-dk);
+    font-size: .9rem;
+  }
+  .player-select {
+    background: rgba(0,0,0,.25);
+    border: 1px solid rgba(244, 236, 216, .15);
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-top: 1rem;
+    backdrop-filter: blur(4px);
+  }
+  .player-select h3 {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 500;
+    color: var(--gold);
+    margin-bottom: 1rem;
+    letter-spacing: .2em;
+    font-size: 1.1rem;
+  }
+  .player-buttons { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; }
+  .pbtn {
+    background: var(--paper);
+    color: var(--ink);
+    border: none;
+    padding: .9rem 1.5rem;
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    border-radius: 6px;
+    box-shadow: 0 4px 0 #b7a682, 0 6px 12px var(--shadow);
+    transition: transform .15s, box-shadow .15s;
+    letter-spacing: .1em;
+  }
+  .pbtn:hover { transform: translateY(2px); box-shadow: 0 2px 0 #b7a682, 0 4px 8px var(--shadow); }
+  .pbtn:active { transform: translateY(4px); box-shadow: 0 0 0 #b7a682; }
+  .pbtn .num { color: var(--vermillion); font-size: 1.4rem; }
+
+  .rules-link {
+    margin-top: 2rem;
+    color: var(--paper);
+    opacity: .7;
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: .95rem;
+    letter-spacing: .15em;
+  }
+  .rules-link:hover { opacity: 1; }
+
+  /* ─── ゲーム画面 ─── */
+  .game {
+    display: none;
+    min-height: 100vh;
+    padding: 1rem;
+    flex-direction: column;
+  }
+  .game.active { display: flex; }
+
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .5rem 1rem;
+    background: rgba(0,0,0,.3);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .topbar .game-title {
+    font-family: 'Shippori Mincho', serif;
+    color: var(--gold);
+    font-weight: 700;
+    letter-spacing: .2em;
+  }
+  .wall-info {
+    color: var(--paper);
+    font-size: .9rem;
+    font-weight: 500;
+  }
+  .wall-info .num { color: var(--gold); font-weight: 700; font-size: 1.1rem; margin: 0 .2rem; }
+  .icon-btn {
+    background: transparent;
+    border: 1px solid var(--paper);
+    color: var(--paper);
+    padding: .35rem .8rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: .85rem;
+    letter-spacing: .1em;
+    opacity: .8;
+  }
+  .icon-btn:hover { opacity: 1; background: rgba(255,255,255,.1); }
+
+  /* 他プレイヤーエリア */
+  .opponents {
+    display: grid;
+    gap: .8rem;
+    margin-bottom: 1rem;
+  }
+  .opp-row {
+    background: rgba(0,0,0,.25);
+    border-radius: 8px;
+    padding: .6rem .8rem;
+    border: 2px solid transparent;
+    transition: border-color .3s;
+  }
+  .opp-row.current-turn {
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(212, 166, 74, .3);
+  }
+  .opp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .3rem;
+    flex-wrap: wrap;
+    gap: .4rem;
+  }
+  .opp-name {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    color: var(--gold);
+    font-size: 1rem;
+    letter-spacing: .15em;
+  }
+  .opp-meta { font-size: .8rem; opacity: .8; }
+  .opp-tiles { display: flex; gap: 2px; flex-wrap: wrap; }
+  .back-tile {
+    width: 22px;
+    height: 30px;
+    background: linear-gradient(135deg, #2d4a3a, #1a3024);
+    border: 1px solid #0d2418;
+    border-radius: 3px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.1);
+  }
+
+  /* 捨て牌エリア */
+  .discard-area {
+    background: rgba(0,0,0,.2);
+    border: 1px dashed rgba(244,236,216,.2);
+    border-radius: 8px;
+    padding: .7rem;
+    margin-bottom: 1rem;
+    min-height: 60px;
+  }
+  .discard-area .label {
+    font-size: .75rem;
+    color: var(--gold);
+    letter-spacing: .3em;
+    margin-bottom: .4rem;
+    font-family: 'Shippori Mincho', serif;
+  }
+  .discard-tiles { display: flex; gap: 3px; flex-wrap: wrap; }
+
+  /* 牌（共通） */
+  .tile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, var(--tile-cream) 0%, var(--tile-cream-dk) 100%);
+    color: var(--ink);
+    font-family: 'Klee One', 'Shippori Mincho', serif;
+    font-weight: 600;
+    border: 1px solid var(--tile-edge);
+    border-radius: 4px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.6),
+      inset 0 -2px 4px rgba(120,90,40,.2),
+      0 2px 4px rgba(0,0,0,.4);
+    user-select: none;
+    position: relative;
+  }
+  .tile.small { width: 28px; height: 38px; font-size: 1.1rem; }
+  .tile.med   { width: 36px; height: 50px; font-size: 1.4rem; }
+  .tile.big   { width: 46px; height: 62px; font-size: 1.8rem; }
+
+  .tile.discarded { opacity: .82; transform: rotate(-2deg); }
+  .tile.last-discard {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.6),
+      0 0 0 2px var(--vermillion),
+      0 0 12px var(--vermillion),
+      0 2px 4px rgba(0,0,0,.4);
+  }
+  .tile.just-drawn {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.6),
+      0 0 0 2px var(--gold),
+      0 0 14px var(--gold),
+      0 2px 4px rgba(0,0,0,.4);
+  }
+
+  /* 自分の手牌エリア */
+  .my-area {
+    margin-top: auto;
+    background: linear-gradient(180deg, rgba(0,0,0,.0), rgba(0,0,0,.35));
+    border-top: 2px solid var(--gold);
+    padding: 1rem .5rem 1rem;
+    border-radius: 12px 12px 0 0;
+  }
+  .my-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: .6rem;
+    padding: 0 .5rem;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .my-name {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: .25em;
+    font-size: 1.05rem;
+  }
+  .turn-indicator {
+    font-size: .85rem;
+    color: var(--paper);
+    background: var(--vermillion);
+    padding: .2rem .7rem;
+    border-radius: 999px;
+    letter-spacing: .15em;
+    display: none;
+  }
+  .turn-indicator.show { display: inline-block; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+
+  /* 5つのスロット コンテナ */
+  .slots-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: .8rem;
+    padding: 0 .25rem;
+  }
+  .slot {
+    background: rgba(0,0,0,.28);
+    border: 1.5px dashed rgba(212, 166, 74, .35);
+    border-radius: 6px;
+    padding: 4px 5px 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-height: 70px;
+    flex-shrink: 0;
+    transition: border-color .2s, background .2s;
+  }
+  .slot.drag-target {
+    border-color: var(--gold);
+    background: rgba(212, 166, 74, .15);
+    border-style: solid;
+  }
+  .slot.full-correct {
+    border-color: rgba(160, 200, 100, .7);
+    border-style: solid;
+    background: rgba(160, 200, 100, .08);
+  }
+  .slot.drag-reject {
+    border-color: var(--vermillion);
+    background: rgba(200, 54, 44, .15);
+    border-style: solid;
+    animation: rejectShake .35s ease-in-out;
+  }
+  @keyframes rejectShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+  }
+  .slot-header {
+    font-size: .65rem;
+    color: var(--gold);
+    letter-spacing: .15em;
+    font-family: 'Shippori Mincho', serif;
+    margin-bottom: 2px;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .slot-tiles {
+    display: flex;
+    gap: 3px;
+    min-height: 50px;
+    align-items: center;
+  }
+  /* スロット内のプレースホルダー（空き枠） */
+  .slot-placeholder {
+    width: 36px;
+    height: 50px;
+    border: 1px dashed rgba(244, 236, 216, .15);
+    border-radius: 4px;
+    background: rgba(0,0,0,.15);
+  }
+
+  /* 余剰プール */
+  .pool-zone {
+    background: rgba(0,0,0,.2);
+    border: 1px dashed rgba(244,236,216,.18);
+    border-radius: 8px;
+    padding: 6px 8px 8px;
+    margin-bottom: .5rem;
+    transition: border-color .2s, background .2s;
+  }
+  .pool-zone.drag-target {
+    border-color: var(--gold);
+    background: rgba(212, 166, 74, .12);
+    border-style: solid;
+  }
+  .pool-label {
+    font-size: .65rem;
+    color: var(--gold);
+    letter-spacing: .3em;
+    font-family: 'Shippori Mincho', serif;
+    margin-bottom: 4px;
+    user-select: none;
+  }
+
+  @media (max-width: 600px) {
+    .slot-tiles { min-height: 42px; }
+    .slot-placeholder { width: 30px; height: 42px; }
+    .slot { padding: 3px 4px 4px; min-height: 60px; }
+    .slot-header { font-size: .6rem; letter-spacing: .1em; }
+  }
+
+  .my-tiles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+    align-items: flex-end;
+    min-height: 70px;
+    padding: 0 .25rem;
+    touch-action: pan-y;  /* 縦スクロールは許可、横はドラッグに使う */
+  }
+
+  .tile.in-hand {
+    cursor: grab;
+    transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .15s;
+    touch-action: none;   /* 長押しメニュー抑制・自前で扱う */
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .tile.in-hand:hover:not(.dragging) { transform: translateY(-6px); }
+  .tile.in-hand.selected:not(.dragging) {
+    transform: translateY(-10px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.6),
+      0 0 0 2px var(--vermillion),
+      0 6px 10px rgba(0,0,0,.5);
+  }
+
+  /* 長押し中（プリドラッグ：まだ持ち上がる前） */
+  .tile.in-hand.pre-drag {
+    transform: translateY(-2px) scale(1.04);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.6),
+      0 0 0 2px var(--gold),
+      0 4px 10px rgba(0,0,0,.5);
+    transition: transform .12s, box-shadow .12s;
+  }
+
+  /* ドラッグ中 */
+  .tile.in-hand.dragging {
+    position: fixed;
+    z-index: 300;
+    cursor: grabbing;
+    transform: translate(-50%, -55%) scale(1.18) rotate(-3deg);
+    transition: none;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.6),
+      0 0 0 2px var(--gold),
+      0 12px 28px rgba(0,0,0,.6);
+    pointer-events: none;
+  }
+
+  /* 並び替え対象として隙間を空けてもらう牌 */
+  .tile.in-hand.drag-shift-right {
+    transform: translateX(20px);
+  }
+  .tile.in-hand.drag-shift-left {
+    transform: translateX(-20px);
+  }
+
+  /* 元の位置に空いた跡（ゴースト） */
+  .tile.in-hand.ghost {
+    opacity: .25;
+    filter: grayscale(.5);
+  }
+
+  .actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: .8rem;
+  }
+  .action-btn {
+    background: var(--paper);
+    color: var(--ink);
+    border: none;
+    padding: .55rem 1rem;
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    font-size: .95rem;
+    cursor: pointer;
+    border-radius: 6px;
+    box-shadow: 0 3px 0 #b7a682;
+    letter-spacing: .15em;
+    transition: transform .12s, box-shadow .12s;
+  }
+  .action-btn:hover:not(:disabled) { transform: translateY(1px); box-shadow: 0 2px 0 #b7a682; }
+  .action-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 #b7a682; }
+  .action-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .action-btn.primary { background: var(--gold); color: var(--ink); box-shadow: 0 3px 0 #8a6a2a; }
+  .action-btn.primary:hover:not(:disabled) { box-shadow: 0 2px 0 #8a6a2a; }
+  .action-btn.danger { background: var(--vermillion); color: var(--paper); box-shadow: 0 3px 0 var(--vermillion-dk); }
+  .action-btn.danger:hover:not(:disabled) { box-shadow: 0 2px 0 var(--vermillion-dk); }
+
+  /* メッセージログ */
+  .log {
+    position: fixed;
+    top: 80px;
+    right: 1rem;
+    width: 240px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(244,236,216,.15);
+    border-radius: 8px;
+    padding: .6rem;
+    font-size: .8rem;
+    line-height: 1.5;
+    z-index: 50;
+  }
+  .log .entry { padding: .15rem 0; border-bottom: 1px dashed rgba(244,236,216,.1); }
+  .log .entry:last-child { border-bottom: none; }
+  .log .entry.highlight { color: var(--gold); font-weight: 700; }
+
+  @media (max-width: 600px) {
+    .log { width: 180px; font-size: .72rem; top: 70px; right: .5rem; max-height: 140px; }
+    .tile.med { width: 30px; height: 42px; font-size: 1.2rem; }
+    .tile.big { width: 38px; height: 52px; font-size: 1.5rem; }
+    .tile.small { width: 22px; height: 30px; font-size: .9rem; }
+    .back-tile { width: 16px; height: 22px; }
+  }
+
+  /* モーダル */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 1rem;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--paper);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 2rem;
+    max-width: 540px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    border-top: 6px solid var(--vermillion);
+    animation: modalIn .25s ease-out;
+  }
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(20px) scale(.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .modal h2 {
+    font-family: 'Shippori Mincho', serif;
+    color: var(--vermillion-dk);
+    margin-bottom: 1rem;
+    letter-spacing: .15em;
+    font-weight: 800;
+  }
+  .modal h3 {
+    font-family: 'Shippori Mincho', serif;
+    margin: 1rem 0 .4rem;
+    color: var(--ink);
+    letter-spacing: .1em;
+  }
+  .modal p, .modal li {
+    line-height: 1.7;
+    margin-bottom: .5rem;
+    font-size: .95rem;
+  }
+  .modal ul { padding-left: 1.5rem; }
+  .modal-actions {
+    display: flex;
+    gap: .8rem;
+    margin-top: 1.5rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  /* グルーピング表示 */
+  .group-builder {
+    background: rgba(0,0,0,.3);
+    border: 1px solid var(--gold);
+    border-radius: 6px;
+    padding: .6rem;
+    margin-top: .5rem;
+    display: none;
+  }
+  .group-builder.show { display: block; }
+  .group-builder .gb-title {
+    font-family: 'Shippori Mincho', serif;
+    color: var(--gold);
+    font-size: .85rem;
+    margin-bottom: .4rem;
+    letter-spacing: .15em;
+  }
+  .gb-slot {
+    display: inline-flex;
+    background: rgba(255,255,255,.05);
+    border: 1px dashed rgba(244,236,216,.3);
+    border-radius: 4px;
+    padding: 4px;
+    margin-right: 6px;
+    margin-bottom: 4px;
+    min-height: 46px;
+    align-items: center;
+    gap: 2px;
+  }
+  .gb-slot .lbl { font-size: .7rem; color: var(--gold); margin-right: 4px; align-self: flex-start; }
+
+  /* 上がり画面 */
+  .win-screen {
+    text-align: center;
+  }
+  .win-screen .stamp {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--vermillion);
+    border: 4px double var(--vermillion);
+    padding: 1rem 2rem;
+    display: inline-block;
+    transform: rotate(-5deg);
+    margin: 1rem 0;
+    letter-spacing: .3em;
+  }
+  .win-screen .winner-name {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 1.5rem;
+    margin: 1rem 0;
+    color: var(--ink);
+  }
+  .win-words {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    justify-content: center;
+    margin: 1rem 0;
+  }
+  .win-word {
+    background: rgba(200, 54, 44, .1);
+    border: 1px solid var(--vermillion);
+    padding: .4rem .8rem;
+    border-radius: 4px;
+    font-family: 'Klee One', serif;
+    font-size: 1.3rem;
+    font-weight: 600;
+  }
+
+  /* 流局 */
+  .draw-screen { text-align: center; }
+  .draw-screen .stamp {
+    font-family: 'Shippori Mincho', serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #555;
+    border: 3px solid #555;
+    padding: .8rem 1.5rem;
+    display: inline-block;
+    margin: 1rem 0;
+    letter-spacing: .3em;
+  }
+
+  /* CPUの宣言バナー */
+  .declaration-banner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--vermillion);
+    color: var(--paper);
+    font-family: 'Shippori Mincho', serif;
+    font-size: 4rem;
+    font-weight: 800;
+    padding: 1rem 3rem;
+    border: 4px double var(--paper);
+    box-shadow: 0 0 40px rgba(0,0,0,.7);
+    letter-spacing: .3em;
+    z-index: 200;
+    animation: declAnim 1.4s ease-out forwards;
+    opacity: 0;
+    pointer-events: none;
+  }
+  @keyframes declAnim {
+    0% { transform: translate(-50%, -50%) scale(.3) rotate(-15deg); opacity: 0; }
+    20% { transform: translate(-50%, -50%) scale(1.15) rotate(0deg); opacity: 1; }
+    70% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(.95) rotate(0deg); opacity: 0; }
+  }
+
+  /* CPU上がり申請の確認ダイアログ用 */
+  .modal .word-display {
+    font-family: 'Klee One', serif;
+    font-size: 1.5rem;
+    background: #fff;
+    padding: .5rem 1rem;
+    border-radius: 4px;
+    border: 1px solid var(--tile-edge);
+    margin: .3rem .5rem .3rem 0;
+    display: inline-block;
+  }
+
+  .hint {
+    font-size: .82rem;
+    opacity: .75;
+    margin-top: .3rem;
+    text-align: center;
+    color: var(--paper);
+    letter-spacing: .05em;
+  }
+
+  /* メルド（晒し牌）表示 */
+  .melds {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .meld {
+    display: flex;
+    gap: 2px;
+    background: rgba(212, 166, 74, .15);
+    padding: 2px 4px;
+    border-radius: 3px;
+    border: 1px solid rgba(212, 166, 74, .4);
+  }
+
+  /* ポン公開牌ゾーン */
+  .meld-zone {
+    background: rgba(200, 54, 44, .12);
+    border: 1.5px solid rgba(200, 54, 44, .5);
+    border-radius: 8px;
+    padding: 6px 10px 8px;
+    margin-bottom: .6rem;
+  }
+  .meld-display {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .meld-group {
+    display: flex;
+    gap: 3px;
+    background: rgba(200, 54, 44, .1);
+    padding: 4px 6px;
+    border-radius: 5px;
+    border: 1px solid rgba(200, 54, 44, .4);
+  }
+  /* ポン選択モーダルの牌 */
+  .pon-candidate {
+    cursor: pointer;
+    transition: transform .12s, box-shadow .12s;
+    border: 2px solid transparent !important;
+  }
+  .pon-candidate:hover { transform: translateY(-4px); }
+  .pon-candidate.selected-pon {
+    border-color: var(--vermillion) !important;
+    transform: translateY(-6px);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.6),
+      0 0 0 2px var(--vermillion),
+      0 6px 10px rgba(0,0,0,.4) !important;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ============== タイトル画面 ============== -->
+<section id="titleScreen" class="title-screen">
+  <div class="title-stamp">麻 雀 風 ボ ー ド ゲ ー ム</div>
+  <h1 class="title-mark">
+    <span class="big">ひらがじゃん</span>
+    <span class="small">ひ ら が な 麻 雀</span>
+  </h1>
+
+  <div class="player-select" id="modeMenu">
+    <h3>モ ー ド を 選 ぶ</h3>
+    <div class="player-buttons">
+      <button class="pbtn" onclick="startCpuGame()">
+        <span class="num">１</span>人 vs C P U
+      </button>
+      <button class="pbtn" onclick="showOnlineMenu()">
+        <span class="num">２</span>人 オ ン ラ イ ン
+      </button>
+    </div>
+    <div class="hint" style="margin-top:1rem;">CPU対戦：1人で気軽に。オンライン：友達と対戦（PeerJS使用）</div>
+  </div>
+
+  <!-- オンラインメニュー -->
+  <div class="player-select" id="onlineMenu" style="display:none;">
+    <h3>オ ン ラ イ ン 対 戦</h3>
+    <div class="player-buttons">
+      <button class="pbtn" onclick="hostStartOnline()">部 屋 を 作 る（ホスト）</button>
+      <button class="pbtn" onclick="showJoinForm()">部 屋 に 参 加（ゲスト）</button>
+      <button class="pbtn" style="background:#ddd;" onclick="hideOnlineMenu()">戻 る</button>
+    </div>
+    <div id="onlineStatus" style="margin-top:1rem;font-size:.9rem;color:var(--paper);"></div>
+  </div>
+
+  <button class="rules-link" onclick="showModal('rules')">▸ 遊 び 方 を 見 る</button>
+</section>
+
+<!-- ============== ゲーム画面 ============== -->
+<section id="gameScreen" class="game">
+  <div class="topbar">
+    <div class="game-title">ひ ら が じ ゃ ん</div>
+    <div class="wall-info">山牌 残 <span class="num" id="wallCount">0</span> 個</div>
+    <div>
+      <button class="icon-btn" onclick="showModal('rules')">遊び方</button>
+      <button class="icon-btn" onclick="confirmReturnTitle()">中断</button>
+    </div>
+  </div>
+
+  <div class="opponents" id="opponents"></div>
+
+  <div class="discard-area">
+    <div class="label">捨 て 牌</div>
+    <div class="discard-tiles" id="discardTiles"></div>
+  </div>
+
+  <div class="my-area">
+    <div class="my-header">
+      <span class="my-name" id="myName">あなた</span>
+      <span class="turn-indicator" id="turnIndicator">あなたの番</span>
+    </div>
+
+    <!-- ポン牌の公開表示（常に右上に） -->
+    <div class="meld-zone" id="meldZone" style="display:none;">
+      <div class="pool-label" style="color:var(--vermillion);">ポ ン 公 開 牌</div>
+      <div id="myMelds" class="meld-display"></div>
+    </div>
+
+    <!-- 5つのスロット：3文字×4 + 2文字×1 -->
+    <div class="slots-container" id="slotsContainer"></div>
+
+    <!-- 余剰プール -->
+    <div class="pool-zone">
+      <div class="pool-label">余 剰 牌</div>
+      <div class="my-tiles pool-tiles" id="myTiles"></div>
+    </div>
+
+    <div class="actions" id="myActions"></div>
+    <div class="hint" id="hintText">「3文字×4組 + 2文字×1組」のスロットに牌をドラッグして整理しよう</div>
+  </div>
+</section>
+
+<!-- ============== ログ ============== -->
+<div class="log" id="logBox" style="display:none;"></div>
+
+<!-- ============== モーダル ============== -->
+<div class="modal-overlay" id="modal">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+</div>
+
+<script>
+/* ============================================================
+   ひらがじゃん  ゲームロジック
+   ============================================================ */
+
+// ───── 牌セット定義 ─────
+// 「あ〜ん」「を」を除く45音 各2個 = 90個
+const BASIC_KANA = [
+  'あ','い','う','え','お',
+  'か','き','く','け','こ',
+  'さ','し','す','せ','そ',
+  'た','ち','つ','て','と',
+  'な','に','ぬ','ね','の',
+  'は','ひ','ふ','へ','ほ',
+  'ま','み','む','め','も',
+  'や','ゆ','よ',
+  'ら','り','る','れ','ろ',
+  'わ','ん'
+];
+// 濁点・半濁点・拗音・長音 30音 各1個 = 30個
+const SPECIAL_KANA = [
+  'が','ぎ','ぐ','げ','ご',
+  'ざ','じ','ず','ぜ','ぞ',
+  'だ','ぢ','づ','で','ど',
+  'ば','び','ぶ','べ','ぼ',
+  'ぱ','ぴ','ぷ','ぺ','ぽ',
+  'ゃ','ゅ','ょ','っ','ー'
+];
+
+const CPU_NAMES = ['雀士  陽子','雀士  鉄郎','雀士  美月','雀士  源蔵'];
+
+let state = null;
+
+/* ============================================================
+   PeerJS オンライン対戦
+   ─────────────────────────────────────
+   - 接続モデル: ホスト権威。ゲストの操作はホストに送信、
+     ホストがロジック実行後に state をブロードキャスト
+   ============================================================ */
+let peer = null;        // PeerJS インスタンス
+let conn = null;        // ホスト⇔ゲスト 通信用 DataConnection
+let myPeerId = null;    // 自分の PeerID
+
+function isOnline() { return state && (state.mode === 'online-host' || state.mode === 'online-guest'); }
+function isHost()   { return state && state.mode === 'online-host'; }
+function isGuest()  { return state && state.mode === 'online-guest'; }
+
+// オンライン中、stateの変更後にホストがゲストに送信
+// ゲストが見るべきでない情報（ホストの手牌の中身）は隠匿する
+function broadcastState() {
+  if (!isHost() || !conn || !conn.open) return;
+  const safe = JSON.parse(JSON.stringify(state));
+  // 受信者(ゲスト)は myIdx=1。1以外のプレイヤー = ホスト(0) のhandを隠す。
+  // ※ただし state.lastDiscard やメルドは公開情報なのでそのまま。
+  safe.players.forEach((p, i) => {
+    if (i === 1) return;  // ゲスト自身の手牌は残す
+    // 隠匿：手牌の枚数だけ伝え、各タイルは中身が分からないダミーに置き換え
+    p.hand = p.hand.map(t => ({ id: t.id, c: '?', hidden: true }));
+    if (p.drawn) p.drawn = { id: p.drawn.id, c: '?', hidden: true };
+  });
+  // 山牌の中身もゲストには不要 → 残数のみで良いが、length比較で困らないよう
+  // ダミー配列に置き換える
+  safe.wall = new Array(state.wall.length).fill(null);
+  conn.send({ type: 'state', state: safe });
+}
+
+// ゲストがアクションをホストに送信
+function sendActionToHost(action) {
+  if (!isGuest() || !conn || !conn.open) return false;
+  conn.send({ type: 'action', action });
+  return true;
+}
+
+// ホストがゲストからのアクションを受け取った時の処理
+function handleGuestAction(action) {
+  if (!isHost()) return;
+  switch (action.type) {
+    case 'discard':
+      hostDoDiscard(action.playerIdx, action.tileId);
+      break;
+    case 'pon':
+      hostExecutePon(action.arrangement);
+      break;
+    case 'pass':
+      hostPassClaim();
+      break;
+    case 'finalize-win':
+      hostFinalizeWin(action.kind, action.playerIdx, action.words);
+      break;
+  }
+}
+
+// ゲストがホストから受け取ったメッセージを処理
+function handleHostMessage(msg) {
+  if (msg.type === 'state') {
+    // 自分の hand の順序・slotId は保持してマージする
+    let mySavedHandOrder = null;
+    if (state && state.players && state.players[1]) {
+      mySavedHandOrder = state.players[1].hand.map(t => ({ id: t.id, slotId: t.slotId }));
+    }
+
+    state = msg.state;
+    state.mode = 'online-guest';
+    state.myIdx = 1;
+
+    // 名前を自分視点に書き換え
+    if (state.players[0]) state.players[0].name = '相手（ホスト）';
+    if (state.players[1]) state.players[1].name = 'あなた（ゲスト）';
+
+    // 自分のhandをマージ：受信したhandから、保持していた順序に並び替え + slotId復元
+    if (mySavedHandOrder && state.players[1]) {
+      const incoming = state.players[1].hand;
+      const incomingIds = new Set(incoming.map(t => t.id));
+      const incomingById = new Map(incoming.map(t => [t.id, t]));
+      const merged = [];
+      for (const sav of mySavedHandOrder) {
+        if (incomingIds.has(sav.id)) {
+          const t = incomingById.get(sav.id);
+          if (sav.slotId) t.slotId = sav.slotId;
+          merged.push(t);
+          incomingIds.delete(sav.id);
+        }
+      }
+      for (const t of incoming) {
+        if (incomingIds.has(t.id)) {
+          merged.push(t);
+        }
+      }
+      state.players[1].hand = merged;
+    }
+    render();
+  } else if (msg.type === 'win') {
+    showRemoteWinScreen(msg.playerIdx, msg.kind, msg.words);
+  } else if (msg.type === 'draw') {
+    showDrawScreen();
+  } else if (msg.type === 'declaration') {
+    showDeclaration(msg.text);
+  } else if (msg.type === 'log') {
+    log(msg.message, msg.highlight);
+  }
+}
+
+// ───── PeerJSの接続セットアップ ─────
+function setupPeer(asHost) {
+  return new Promise((resolve, reject) => {
+    try {
+      // 既存ピアがあれば破棄
+      if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
+      if (conn) { try { conn.close(); } catch(e){} conn = null; }
+      peer = new Peer({ debug: 1 });
+      peer.on('open', id => {
+        myPeerId = id;
+        resolve(id);
+      });
+      peer.on('error', err => {
+        reject(err);
+      });
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function attachConnHandlers() {
+  conn.on('open', () => {
+    setOnlineStatus('接続成立！');
+  });
+  conn.on('data', data => {
+    if (isHost()) {
+      if (data.type === 'action') handleGuestAction(data.action);
+    } else {
+      handleHostMessage(data);
+    }
+  });
+  conn.on('close', () => {
+    alert('相手が切断しました。タイトルに戻ります。');
+    returnToTitle();
+  });
+  conn.on('error', err => {
+    console.error('Conn error:', err);
+  });
+}
+
+function setOnlineStatus(msg) {
+  const el = document.getElementById('onlineStatus');
+  if (el) el.innerHTML = msg;
+}
+
+// ───── ホスト：部屋作成 ─────
+async function hostStartOnline() {
+  setOnlineStatus('ピアサーバーに接続中…');
+  try {
+    const id = await setupPeer(true);
+    const shortId = id.slice(0, 6) + '…' + id.slice(-4);
+    setOnlineStatus(`
+      あなたの ID（コピーして相手に渡してください）:<br>
+      <input type="text" readonly value="${id}" id="hostIdField" style="width:100%;font-size:.75rem;padding:.4rem;margin:.4rem 0;border-radius:4px;border:1px solid #ccc;color:#333;" onclick="this.select()">
+      <button class="action-btn" onclick="copyHostId()" style="font-size:.85rem;">📋 IDをコピー</button>
+      <div style="margin-top:.6rem;font-size:.85rem;">相手の接続を待っています…</div>
+    `);
+    // ゲストからの接続を待つ
+    peer.on('connection', c => {
+      conn = c;
+      attachConnHandlers();
+      conn.on('open', () => {
+        setOnlineStatus('相手が参加しました！ゲーム開始…');
+        setTimeout(() => {
+          startGame(2, { mode: 'online-host' });
+        }, 800);
+      });
+    });
+  } catch (err) {
+    setOnlineStatus('接続失敗: ' + (err.message || err));
+  }
+}
+
+function copyHostId() {
+  const f = document.getElementById('hostIdField');
+  if (!f) return;
+  f.select();
+  try { document.execCommand('copy'); alert('コピーしました'); }
+  catch(e) { /* clipboard API fallback */
+    if (navigator.clipboard) navigator.clipboard.writeText(f.value).then(()=>alert('コピーしました'));
+  }
+}
+
+// ───── ゲスト：参加フォーム ─────
+function showJoinForm() {
+  setOnlineStatus(`
+    <div style="margin-bottom:.5rem;font-size:.9rem;">ホストから受け取ったIDを入力：</div>
+    <input type="text" id="joinIdField" placeholder="ID を貼り付け" style="width:100%;font-size:.85rem;padding:.5rem;border-radius:4px;border:1px solid #ccc;color:#333;" autocomplete="off">
+    <button class="action-btn primary" onclick="joinAsGuest()" style="margin-top:.6rem;">参加する</button>
+  `);
+}
+
+async function joinAsGuest() {
+  const idField = document.getElementById('joinIdField');
+  if (!idField) return;
+  const hostId = idField.value.trim();
+  if (!hostId) { alert('IDを入力してください'); return; }
+  setOnlineStatus('ピアサーバーに接続中…');
+  try {
+    await setupPeer(false);
+    setOnlineStatus('ホストに接続中…');
+    conn = peer.connect(hostId, { reliable: true });
+    attachConnHandlers();
+    conn.on('open', () => {
+      setOnlineStatus('接続成立！ゲーム開始を待っています…');
+      // ゲストはstate送信を待つ
+      startGame(2, { mode: 'online-guest' });
+    });
+  } catch (err) {
+    setOnlineStatus('接続失敗: ' + (err.message || err));
+  }
+}
+
+function showOnlineMenu() {
+  document.getElementById('onlineMenu').style.display = 'block';
+  document.getElementById('modeMenu').style.display = 'none';
+}
+
+function hideOnlineMenu() {
+  document.getElementById('onlineMenu').style.display = 'none';
+  const m = document.getElementById('modeMenu');
+  if (m) m.style.display = '';
+  setOnlineStatus('');
+  if (peer && !state) { try { peer.destroy(); } catch(e){} peer = null; conn = null; }
+}
+
+// ───── 山を作成（120個） ─────
+function buildWall() {
+  const wall = [];
+  let id = 0;
+  BASIC_KANA.forEach(c => { wall.push({id:id++,c}); wall.push({id:id++,c}); });
+  SPECIAL_KANA.forEach(c => { wall.push({id:id++,c}); });
+  // シャッフル
+  for (let i = wall.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [wall[i], wall[j]] = [wall[j], wall[i]];
+  }
+  return wall;
+}
+
+// ───── ゲーム開始 ─────
+// ───── CPU対戦の開始 ─────
+function startCpuGame() {
+  startGame(2, { mode: 'cpu' });
+}
+
+// ───── ゲーム開始（共通） ─────
+function startGame(numPlayers, opts) {
+  opts = opts || { mode: 'cpu' };
+
+  // ホスト/ゲスト両方とも同じ初期化を想定するが、ゲストは serverState を待つだけ
+  if (opts.mode === 'online-guest') {
+    // ゲストはホストからのstate送信を待つ。画面遷移だけ先に行う
+    state = null;
+    document.getElementById('titleScreen').style.display = 'none';
+    document.getElementById('gameScreen').classList.add('active');
+    document.getElementById('logBox').style.display = 'block';
+    // 簡易状態表示（state受信前）
+    const hint = document.getElementById('hintText');
+    if (hint) hint.textContent = 'ホストからのゲーム状態を受信中…';
+    return;
+  }
+
+  const wall = buildWall();
+
+  const players = [];
+  if (opts.mode === 'online-host') {
+    // 2人オンライン：プレイヤー0=ホスト(自分)、プレイヤー1=ゲスト
+    players.push({ idx:0, name:'あなた（ホスト）', isCPU:false, hand:[], melds:[], drawn:null });
+    players.push({ idx:1, name:'相手',           isCPU:false, hand:[], melds:[], drawn:null });
+  } else {
+    // CPU対戦：プレイヤー0=自分、残りはCPU
+    players.push({ idx:0, name:'あなた', isCPU:false, hand:[], melds:[], drawn:null });
+    for (let i = 1; i < numPlayers; i++) {
+      players.push({ idx:i, name:CPU_NAMES[i-1], isCPU:true, hand:[], melds:[], drawn:null });
+    }
+  }
+  // 各プレイヤーに13個配る
+  for (const p of players) {
+    for (let i = 0; i < 13; i++) {
+      const tile = wall.pop();
+      if (!p.isCPU) tile.slotId = 'pool';
+      p.hand.push(tile);
+    }
+    sortHand(p);
+  }
+
+  state = {
+    players,
+    wall,
+    discards: [],
+    turn: 0,
+    phase: 'draw',
+    lastDiscard: null,
+    log: [],
+    selectedTileId: null,
+    awaitingPonResponse: false,
+    lastDrawnId: null,
+    mode: opts.mode,           // 'cpu' | 'online-host' | 'online-guest'
+    myIdx: 0                   // 自分のプレイヤーインデックス（ホストは0、ゲストは1）
+  };
+
+  document.getElementById('titleScreen').style.display = 'none';
+  document.getElementById('gameScreen').classList.add('active');
+  document.getElementById('logBox').style.display = 'block';
+
+  log('ゲーム開始 ── '+(opts.mode==='online-host'?'オンライン2人':numPlayers+'人プレイ'));
+  log((opts.mode==='online-host'?'あなた（ホスト）':'あなた') + 'が親です');
+  render();
+
+  // オンラインホスト：ゲストに初期stateを送信
+  if (opts.mode === 'online-host') {
+    broadcastState();
+  }
+
+  // 親（プレイヤー0）からスタート → 自動でツモ
+  setTimeout(() => doDraw(0), 400);
+}
+
+// ───── 自分プレイヤー取得 ─────
+function getMe() {
+  return state.players[state.myIdx];
+}
+
+// ───── 手牌ソート ─────
+function sortHand(p) {
+  const order = [...BASIC_KANA, ...SPECIAL_KANA];
+  p.hand.sort((a,b) => order.indexOf(a.c) - order.indexOf(b.c));
+}
+
+// ───── タイル要素を生成 ─────
+function buildTileEl(t) {
+  const isLastDrawn = (state.lastDrawnId === t.id);
+  const isSelected = (state.selectedTileId === t.id);
+  const cls = `tile med in-hand${isSelected?' selected':''}${isLastDrawn?' just-drawn':''}`;
+  const el = document.createElement('div');
+  el.className = cls;
+  el.dataset.id = t.id;
+  el.textContent = t.c;
+  return el;
+}
+
+// ───── ログ出力 ─────
+function log(msg, highlight=false) {
+  if (!state) return;
+  state.log.push({msg, highlight});
+  if (state.log.length > 30) state.log.shift();
+  renderLog();
+}
+
+function renderLog() {
+  if (!state) return;
+  const box = document.getElementById('logBox');
+  if (!box) return;
+  box.innerHTML = state.log.map(e =>
+    `<div class="entry${e.highlight?' highlight':''}">${e.msg}</div>`
+  ).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+// ───── ツモ ─────
+function doDraw(playerIdx) {
+  if (state.wall.length === 0) {
+    // 流局
+    if (isHost() && conn && conn.open) {
+      conn.send({ type: 'draw' });
+    }
+    showDrawScreen();
+    return;
+  }
+  const p = state.players[playerIdx];
+  const tile = state.wall.pop();
+  if (p.isCPU) {
+    p.drawn = tile;
+  } else {
+    // プレイヤー：手牌末尾に追加 + ハイライト用にIDを記録
+    tile.slotId = 'pool';
+    p.hand.push(tile);
+    state.lastDrawnId = tile.id;
+  }
+  state.phase = 'discard';
+  state.turn = playerIdx;
+  log(`${p.name} がツモ`);
+  if (isHost()) broadcastState();
+  render();
+
+  if (p.isCPU) {
+    setTimeout(() => cpuTurn(playerIdx), 800);
+  }
+}
+
+// ───── 描画 ─────
+function render() {
+  // 山牌残数
+  document.getElementById('wallCount').textContent = state.wall.length;
+
+  // 他プレイヤー（自分以外）
+  const oppDiv = document.getElementById('opponents');
+  oppDiv.innerHTML = '';
+  for (let i = 0; i < state.players.length; i++) {
+    if (i === state.myIdx) continue;
+    const p = state.players[i];
+    const handCount = p.hand.length + (p.drawn ? 1 : 0);
+    const meldsHtml = p.melds.map(m =>
+      `<div class="meld">${m.tiles.map(t=>`<div class="tile small">${t.c}</div>`).join('')}</div>`
+    ).join('');
+    const tilesHtml = Array(handCount).fill(0).map(()=>'<div class="back-tile"></div>').join('');
+    oppDiv.innerHTML += `
+      <div class="opp-row ${state.turn===i ? 'current-turn':''}">
+        <div class="opp-header">
+          <span class="opp-name">${p.name}</span>
+          <span class="opp-meta">手牌 ${handCount} / 山 ${state.wall.length}</span>
+        </div>
+        <div class="opp-tiles">${tilesHtml}</div>
+        <div class="melds">${meldsHtml}</div>
+      </div>`;
+  }
+
+  // 捨て牌
+  const discardDiv = document.getElementById('discardTiles');
+  discardDiv.innerHTML = state.discards.map((d, i) => {
+    const isLast = (i === state.discards.length - 1) && state.lastDiscard;
+    return `<div class="tile small discarded${isLast?' last-discard':''}">${d.tile.c}</div>`;
+  }).join('');
+
+  // 自分の手牌：スロット + プール
+  const me = getMe();
+  // メルド数に応じてスロット構成を決定
+  // メルドは3文字グループとして確定済み → 残りで作るのは（3文字×(4-melds)） + （2文字×1）
+  const meldsCount = me.melds.length;
+  const need3 = 4 - meldsCount;
+  // スロット定義 [{id, label, capacity}, ...]
+  const slotDefs = [];
+  for (let i = 0; i < need3; i++) {
+    slotDefs.push({ id: `g${i}`, label: `３文字`, capacity: 3 });
+  }
+  slotDefs.push({ id: `g4`, label: `２文字`, capacity: 2 });
+
+  // 既存タイルの slotId が、もう存在しないスロットを指していたら 'pool' に戻す
+  const validSlotIds = new Set(slotDefs.map(s => s.id).concat(['pool']));
+  me.hand.forEach(t => {
+    if (!validSlotIds.has(t.slotId)) t.slotId = 'pool';
+  });
+
+  // スロットコンテナ描画
+  const slotsContainer = document.getElementById('slotsContainer');
+  slotsContainer.innerHTML = '';
+  slotDefs.forEach(s => {
+    const tilesInSlot = me.hand.filter(t => t.slotId === s.id);
+    const isFull = tilesInSlot.length === s.capacity;
+    const slotEl = document.createElement('div');
+    slotEl.className = 'slot' + (isFull ? ' full-correct' : '');
+    slotEl.dataset.slot = s.id;
+    slotEl.innerHTML = `<div class="slot-header">${s.label}</div>`;
+    const tilesDiv = document.createElement('div');
+    tilesDiv.className = 'slot-tiles';
+    tilesDiv.dataset.slot = s.id;
+    tilesInSlot.forEach(t => tilesDiv.appendChild(buildTileEl(t)));
+    // 空き枠プレースホルダーを表示
+    const emptyCount = Math.max(0, s.capacity - tilesInSlot.length);
+    for (let i = 0; i < emptyCount; i++) {
+      const ph = document.createElement('div');
+      ph.className = 'slot-placeholder';
+      tilesDiv.appendChild(ph);
+    }
+    slotEl.appendChild(tilesDiv);
+    slotsContainer.appendChild(slotEl);
+  });
+
+  // 余剰プール
+  const poolDiv = document.getElementById('myTiles');
+  poolDiv.innerHTML = '';
+  poolDiv.dataset.slot = 'pool';
+  const poolTiles = me.hand.filter(t => t.slotId === 'pool');
+  poolTiles.forEach(t => poolDiv.appendChild(buildTileEl(t)));
+
+  // ドラッグ＆クリックハンドラの取り付け
+  attachTileHandlers();
+
+  // 自分のメルド（ポン公開牌）
+  const meldZone = document.getElementById('meldZone');
+  const meldsDiv = document.getElementById('myMelds');
+  if (me.melds.length > 0) {
+    meldZone.style.display = 'block';
+    meldsDiv.innerHTML = me.melds.map(m =>
+      `<div class="meld-group">${m.tiles.map(t=>`<div class="tile med">${t.c}</div>`).join('')}</div>`
+    ).join('');
+  } else {
+    meldZone.style.display = 'none';
+    meldsDiv.innerHTML = '';
+  }
+
+  // ターンインジケーター
+  document.getElementById('turnIndicator').classList.toggle('show', state.turn === state.myIdx && state.phase === 'discard');
+
+  // アクションボタン
+  renderActions();
+
+  // ログ表示も更新（state置き換え後の同期用）
+  renderLog();
+}
+
+// ───── アクションボタン ─────
+function renderActions() {
+  const div = document.getElementById('myActions');
+  div.innerHTML = '';
+  const me = getMe();
+
+  if (state.phase === 'awaiting-claim') {
+    // 捨てた本人にはアクションを見せない
+    if (state.lastDiscard && state.lastDiscard.by === state.myIdx) {
+      div.innerHTML = '';
+      document.getElementById('hintText').textContent = `あなたが「${state.lastDiscard.tile.c}」を捨てました。相手の応答待ち…`;
+      return;
+    }
+    // 他プレイヤーが捨てた → ポン/ロンの選択
+    const lastTile = state.lastDiscard.tile;
+    div.innerHTML = `
+      <button class="action-btn primary" onclick="declarePon()">ポ ン</button>
+      <button class="action-btn danger" onclick="declareRon()">ロ ン  上 が り</button>
+      <button class="action-btn" onclick="passClaim()">パ ス</button>
+    `;
+    document.getElementById('hintText').textContent =
+      `${state.lastDiscard.byName} が「${lastTile.c}」を捨てました。ポン（捨て牌＋手牌2枚で3文字を作る） / ロン / パス`;
+    return;
+  }
+
+  if (state.phase === 'discard' && state.turn === state.myIdx) {
+    // 自分の手番：捨てる or ツモ上がり
+    const selected = state.selectedTileId !== null;
+    div.innerHTML = `
+      <button class="action-btn primary" onclick="declareTsumo()">ツ モ 上 が り</button>
+      <button class="action-btn" ${selected?'':'disabled'} onclick="discardSelected()">捨 て る</button>
+    `;
+    // スロット完成状況のヒント
+    const me = getMe();
+    const slotDefs2 = [];
+    for (let i = 0; i < 4 - me.melds.length; i++) slotDefs2.push({id:`g${i}`,cap:3});
+    slotDefs2.push({id:'g4',cap:2});
+    const filledSlots = slotDefs2.filter(s =>
+      me.hand.filter(t => t.slotId === s.id).length === s.cap
+    ).length;
+    const totalSlots = slotDefs2.length;
+    const slotStatus = `組の完成: ${filledSlots} / ${totalSlots}`;
+    document.getElementById('hintText').textContent =
+      selected ? `選んだ牌を捨てるか、上がりを宣言　／　${slotStatus}`
+               : `タップで選択　／　長押し＋ドラッグで並び替え　／　${slotStatus}`;
+    return;
+  }
+
+  // 自分の番でない時
+  div.innerHTML = '';
+  document.getElementById('hintText').textContent = '他のプレイヤーの番です…　（手牌の並び替えはできます）';
+}
+
+// ───── 牌を選択 ─────
+function selectTile(id) {
+  if (state.turn !== 0 || state.phase !== 'discard') {
+    // 自分の番でない時はドラッグ並び替えのみ。タップ選択は無効。
+    return;
+  }
+  state.selectedTileId = (state.selectedTileId === id) ? null : id;
+  render();
+}
+
+/* ============================================================
+   手牌のドラッグ＆ドロップ並び替え
+   ─────────────────────────────────────────
+   - 短いタップ → クリックとして selectTile
+   - 長押し（300ms）→ pre-drag（並び替えモード待機）
+   - pre-drag 中にポインタを動かすと → 本ドラッグ開始
+   - 本ドラッグ中、他タイルの中央x座標を越えたら配列を入れ替え
+   ============================================================ */
+
+const DRAG = {
+  state: 'idle',     // 'idle' | 'pressing' | 'pre-drag' | 'dragging'
+  tile: null,        // 対象のDOM要素
+  tileId: null,
+  startX: 0,
+  startY: 0,
+  pointerId: null,
+  pressTimer: null,
+  movedDistance: 0,
+  // ドラッグ中のサイズ・位置
+  width: 0,
+  height: 0,
+  // ドラッグ開始時刻（誤操作防止用）
+  pressStartTime: 0
+};
+
+const PRESS_HOLD_MS = 75;        // 長押し成立時間
+const TAP_TOLERANCE_PX = 8;      // タップとみなせる移動距離
+const DRAG_BEGIN_PX = 4;         // pre-drag→本ドラッグへの距離閾値
+
+function attachTileHandlers() {
+  // プール内 + 各スロット内のタイル
+  const tiles = document.querySelectorAll('#myTiles .tile.in-hand, .slot-tiles .tile.in-hand');
+  tiles.forEach(t => {
+    t.addEventListener('pointerdown', onTilePointerDown);
+  });
+}
+
+function onTilePointerDown(e) {
+  if (DRAG.state !== 'idle') return;
+  // マウスは左ボタンのみ
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+  const tile = e.currentTarget;
+  DRAG.state = 'pressing';
+  DRAG.tile = tile;
+  DRAG.tileId = parseInt(tile.dataset.id);
+  DRAG.startX = e.clientX;
+  DRAG.startY = e.clientY;
+  DRAG.pointerId = e.pointerId;
+  DRAG.movedDistance = 0;
+  DRAG.pressStartTime = Date.now();
+
+  const rect = tile.getBoundingClientRect();
+  DRAG.width = rect.width;
+  DRAG.height = rect.height;
+
+  // ポインタキャプチャを取得
+  try { tile.setPointerCapture(e.pointerId); } catch(err) {}
+
+  // 長押しタイマー
+  DRAG.pressTimer = setTimeout(() => {
+    if (DRAG.state === 'pressing') {
+      DRAG.state = 'pre-drag';
+      tile.classList.add('pre-drag');
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch(e) {}
+    }
+  }, PRESS_HOLD_MS);
+
+  window.addEventListener('pointermove', onTilePointerMove);
+  window.addEventListener('pointerup', onTilePointerUp);
+  window.addEventListener('pointercancel', onTilePointerUp);
+
+  e.preventDefault();
+}
+
+function onTilePointerMove(e) {
+  if (DRAG.state === 'idle' || e.pointerId !== DRAG.pointerId) return;
+
+  const dx = e.clientX - DRAG.startX;
+  const dy = e.clientY - DRAG.startY;
+  const dist = Math.hypot(dx, dy);
+  DRAG.movedDistance = Math.max(DRAG.movedDistance, dist);
+
+  if (DRAG.state === 'pressing') {
+    if (dist > TAP_TOLERANCE_PX) {
+      clearTimeout(DRAG.pressTimer);
+      DRAG.state = 'cancelled';
+    }
+    return;
+  }
+
+  if (DRAG.state === 'pre-drag') {
+    if (dist > DRAG_BEGIN_PX) {
+      startActualDrag(e);
+    }
+    return;
+  }
+
+  if (DRAG.state === 'dragging') {
+    DRAG.tile.style.left = e.clientX + 'px';
+    DRAG.tile.style.top  = e.clientY + 'px';
+    updateDragOrder(e.clientX, e.clientY);
+  }
+}
+
+function startActualDrag(e) {
+  DRAG.state = 'dragging';
+  const tile = DRAG.tile;
+  tile.classList.remove('pre-drag');
+
+  const placeholder = document.createElement('div');
+  placeholder.className = 'drag-placeholder-el';
+  placeholder.style.cssText = `
+    width:${DRAG.width}px; height:${DRAG.height}px;
+    border:1px dashed rgba(212,166,74,.6);
+    border-radius:4px;
+    background:rgba(212,166,74,.08);
+    box-sizing:border-box;
+  `;
+  placeholder.dataset.placeholder = '1';
+  tile.parentNode.insertBefore(placeholder, tile);
+  DRAG.placeholder = placeholder;
+
+  // タイル本体をfixedに（一旦bodyに移動するとスロットの幅変動の影響を受けない）
+  document.body.appendChild(tile);
+  tile.classList.add('dragging');
+  tile.style.left = e.clientX + 'px';
+  tile.style.top  = e.clientY + 'px';
+  tile.style.width = DRAG.width + 'px';
+  tile.style.height = DRAG.height + 'px';
+}
+
+/* ドラッグ中：ポインタの真下のゾーンと位置を判定して、placeholder を移動する */
+function updateDragOrder(pointerX, pointerY) {
+  if (!DRAG.placeholder) return;
+
+  // ドラッグ中タイル自体は pointer-events: none なので、その下のスロット要素が拾える
+  const stack = document.elementsFromPoint(pointerX, pointerY);
+
+  // ターゲットゾーン（pool または slot-tiles）を探す
+  let targetZone = null;
+  for (const el of stack) {
+    if (el.classList.contains('slot-tiles') || el.classList.contains('pool-tiles')) {
+      targetZone = el;
+      break;
+    }
+    // 親をたどる
+    const slotParent = el.closest && el.closest('.slot-tiles, .pool-tiles');
+    if (slotParent) { targetZone = slotParent; break; }
+  }
+
+  // 既存ハイライトをクリア
+  document.querySelectorAll('.slot, .pool-zone').forEach(s => {
+    s.classList.remove('drag-target');
+    s.classList.remove('drag-reject');
+  });
+
+  if (!targetZone) {
+    // ゾーンの外に出たら placeholder はそのまま
+    return;
+  }
+
+  // ハイライト
+  const targetWrap = targetZone.closest('.slot') || targetZone.closest('.pool-zone');
+  if (targetWrap) targetWrap.classList.add('drag-target');
+
+  // 容量チェック：スロットの場合のみ。プールは無制限。
+  // 既にこのスロットに placeholder が入っている場合（＝同じスロット内で並べ替えているだけ）はOK
+  if (targetZone.classList.contains('slot-tiles')) {
+    const slotId = targetZone.dataset.slot;
+    const me = getMe();
+    // ドラッグ中タイルは現在 body 直下にあるが、論理上「元のスロット」にあった
+    // → そのslotIdは draggedTile.slotId に保持されているはず
+    const draggedTile = me.hand.find(t => t.id === DRAG.tileId);
+    const draggedFromSameSlot = draggedTile && draggedTile.slotId === slotId;
+
+    // ターゲットスロットの定義された容量
+    const slotDef = (slotId === 'g4') ? 2 : 3;
+    // 現在そのスロットにいるタイル数（ドラッグ中タイル自身は除く）
+    const currentCount = me.hand.filter(t => t.slotId === slotId && t.id !== DRAG.tileId).length;
+
+    // もし draggedTile が同じスロット出身なら、そのスロット内での並べ替えだけ → OK（容量を超えない）
+    // 違うスロット/プール出身なら、新しく1個増えるので容量を超えていないか確認
+    if (!draggedFromSameSlot && currentCount >= slotDef) {
+      // 拒否：placeholderは動かさない、赤い禁止表示に切り替え
+      if (targetWrap) {
+        targetWrap.classList.remove('drag-target');
+        targetWrap.classList.add('drag-reject');
+      }
+      return;
+    }
+  }
+
+  // ターゲットゾーン内の挿入位置を決定
+  // - スロット内：1行 → x座標で判定
+  // - プール内：複数行になり得る → 同じ行のもの（y座標が近い）の中で x で判定
+  const draggable = Array.from(targetZone.children).filter(el =>
+    !el.dataset.placeholder &&
+    !el.classList.contains('slot-placeholder') &&
+    el !== DRAG.tile
+  );
+
+  let insertBefore = null;
+
+  if (targetZone.classList.contains('pool-tiles')) {
+    // プールは複数行。ポインタの y 座標と同じ行のもののみで判定
+    const sameRow = draggable.filter(el => {
+      const r = el.getBoundingClientRect();
+      return pointerY >= r.top && pointerY <= r.bottom;
+    });
+    if (sameRow.length === 0) {
+      // 同じ行に他のタイルがない → ポインタの y より下にある最初のタイルの前 or 末尾
+      // → 上の行を超えていれば、その行の末尾に挿入
+      // 単純化：ポインタより下にあるタイルの中で最初のもの
+      for (const el of draggable) {
+        const r = el.getBoundingClientRect();
+        if (r.top > pointerY) { insertBefore = el; break; }
+      }
+    } else {
+      // 同じ行の中でx座標から判定
+      for (const el of sameRow) {
+        const r = el.getBoundingClientRect();
+        if (pointerX < r.left + r.width / 2) { insertBefore = el; break; }
+      }
+    }
+  } else {
+    // スロット内：基本1行
+    for (const el of draggable) {
+      const r = el.getBoundingClientRect();
+      if (pointerX < r.left + r.width / 2) { insertBefore = el; break; }
+    }
+  }
+
+  // 移動が必要か判定
+  const ph = DRAG.placeholder;
+  let needsMove = false;
+  if (ph.parentNode !== targetZone) {
+    needsMove = true;
+  } else if (insertBefore) {
+    if (ph.nextSibling !== insertBefore) needsMove = true;
+  } else {
+    // 末尾に置きたい：但しスロット内ではプレースホルダー（slot-placeholder）が末尾に並んでいる可能性がある
+    // → 単純に「末尾の slot-placeholder の前 or コンテナ末尾」に置く
+    const lastNonPlaceholder = Array.from(targetZone.children).filter(c => !c.classList.contains('slot-placeholder') && !c.dataset.placeholder).pop();
+    if (lastNonPlaceholder && ph.previousSibling !== lastNonPlaceholder && ph !== lastNonPlaceholder.nextSibling) {
+      needsMove = true;
+    } else if (!lastNonPlaceholder) {
+      // 空のスロット → 先頭に
+      needsMove = (ph.parentNode !== targetZone || ph !== targetZone.firstChild);
+    }
+  }
+
+  if (!needsMove) return;
+
+  // FLIP: 関係する全ゾーン内のタイルの位置を記録
+  const allActiveTiles = Array.from(document.querySelectorAll('#myTiles .tile.in-hand, .slot-tiles .tile.in-hand'))
+    .filter(el => el !== DRAG.tile);
+  const before = new Map();
+  allActiveTiles.forEach(el => before.set(el, el.getBoundingClientRect()));
+
+  // ── スロット容量保持ロジック ──
+  // placeholder の出元と移動先がスロットなら、slot-placeholder（空き枠）の数を調整して
+  // 「枠数 = 容量」を保つ
+  const oldZone = ph.parentNode;
+  const newZone = targetZone;
+
+  // 旧位置がスロットなら → そのスロットに空き枠を1つ追加（末尾に）
+  if (oldZone && oldZone.classList.contains('slot-tiles')) {
+    const sp = document.createElement('div');
+    sp.className = 'slot-placeholder';
+    oldZone.appendChild(sp);
+  }
+  // 新位置がスロットなら → そのスロットの空き枠を1つ削除（末尾の slot-placeholder）
+  if (newZone.classList.contains('slot-tiles')) {
+    const slotPlaceholders = Array.from(newZone.children).filter(c => c.classList.contains('slot-placeholder'));
+    if (slotPlaceholders.length > 0) {
+      slotPlaceholders[slotPlaceholders.length - 1].remove();
+    }
+  }
+
+  // placeholder を移動
+  if (insertBefore) {
+    targetZone.insertBefore(ph, insertBefore);
+  } else {
+    // 末尾に：slot-placeholderがある場合はその前
+    const firstSlotPlaceholder = Array.from(targetZone.children).find(c => c.classList.contains('slot-placeholder'));
+    if (firstSlotPlaceholder) {
+      targetZone.insertBefore(ph, firstSlotPlaceholder);
+    } else {
+      targetZone.appendChild(ph);
+    }
+  }
+
+  // FLIP: 移動後の位置から差分計算
+  allActiveTiles.forEach(el => {
+    const rectBefore = before.get(el);
+    if (!rectBefore) return;
+    const rectAfter = el.getBoundingClientRect();
+    const dx = rectBefore.left - rectAfter.left;
+    const dy = rectBefore.top - rectAfter.top;
+    if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
+    el.style.transition = 'none';
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    requestAnimationFrame(() => {
+      el.style.transition = '';
+      el.style.transform = '';
+    });
+  });
+}
+
+function onTilePointerUp(e) {
+  if (DRAG.state === 'idle' || e.pointerId !== DRAG.pointerId) return;
+
+  window.removeEventListener('pointermove', onTilePointerMove);
+  window.removeEventListener('pointerup', onTilePointerUp);
+  window.removeEventListener('pointercancel', onTilePointerUp);
+  clearTimeout(DRAG.pressTimer);
+
+  const wasState = DRAG.state;
+  const tappedId = DRAG.tileId;
+  const movedDist = DRAG.movedDistance;
+  const elapsed = Date.now() - DRAG.pressStartTime;
+
+  if (wasState === 'pressing' && movedDist <= TAP_TOLERANCE_PX && elapsed < PRESS_HOLD_MS) {
+    DRAG.state = 'idle';
+    DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
+    selectTile(tappedId);
+    return;
+  }
+
+  if (wasState === 'pre-drag') {
+    DRAG.tile.classList.remove('pre-drag');
+    DRAG.state = 'idle';
+    DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
+    return;
+  }
+
+  if (wasState === 'dragging') {
+    finishDrag();
+    return;
+  }
+
+  DRAG.state = 'idle';
+  DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
+}
+
+function finishDrag() {
+  const tile = DRAG.tile;
+  const ph = DRAG.placeholder;
+  const me = getMe();
+
+  // placeholder の親ゾーンから新しい slotId を決定
+  let newSlotId = 'pool';
+  if (ph && ph.parentNode) {
+    const zone = ph.parentNode;
+    if (zone.dataset.slot) newSlotId = zone.dataset.slot;
+  }
+
+  // 対象タイルの slotId を更新
+  const draggedTile = me.hand.find(t => t.id === DRAG.tileId);
+  if (draggedTile) draggedTile.slotId = newSlotId;
+
+  // me.hand 配列を「全ゾーンを横断したDOM順序」に従って再構築
+  // → 各ゾーンを順に走査して、その中のタイルIDを集める
+  const newOrder = [];
+  const zones = [
+    ...document.querySelectorAll('.slot-tiles'),
+    document.getElementById('myTiles')  // pool
+  ];
+  zones.forEach(zone => {
+    Array.from(zone.children).forEach(el => {
+      if (el.dataset.placeholder) {
+        newOrder.push(DRAG.tileId);
+      } else if (el.classList.contains('tile') && !el.classList.contains('slot-placeholder')) {
+        newOrder.push(parseInt(el.dataset.id));
+      }
+    });
+  });
+
+  // ドラッグ中タイルがDOM上から消えていればnewOrderに含まれない可能性がある → 補完
+  if (!newOrder.includes(DRAG.tileId)) {
+    newOrder.push(DRAG.tileId);
+  }
+
+  const byId = new Map(me.hand.map(t => [t.id, t]));
+  me.hand = newOrder.map(id => byId.get(id)).filter(Boolean);
+
+  // 後片付け
+  // ドラッグに使った tile は body 直下にあり、render() で手牌が再描画されるため不要 → 削除
+  if (tile && tile.parentNode) tile.parentNode.removeChild(tile);
+  if (ph && ph.parentNode) ph.parentNode.removeChild(ph);
+  document.querySelectorAll('.slot, .pool-zone').forEach(s => {
+    s.classList.remove('drag-target');
+    s.classList.remove('drag-reject');
+  });
+
+  DRAG.state = 'idle';
+  DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
+
+  // 再描画
+  render();
+}
+
+// ───── 選んだ牌を捨てる ─────
+function discardSelected() {
+  if (state.selectedTileId === null) return;
+  const id = state.selectedTileId;
+
+  if (isGuest()) {
+    // ゲスト: アクション送信のみ。state変更はホストが行う
+    sendActionToHost({ type: 'discard', playerIdx: state.myIdx, tileId: id });
+    state.selectedTileId = null;
+    return;
+  }
+
+  // ホスト or CPUモード: ローカルで処理
+  hostDoDiscard(state.myIdx, id);
+}
+
+// ホスト権威：捨てる処理本体
+function hostDoDiscard(playerIdx, tileId) {
+  const p = state.players[playerIdx];
+  const idx = p.hand.findIndex(t => t.id === tileId);
+  if (idx === -1) return;
+  const tile = p.hand.splice(idx, 1)[0];
+  state.selectedTileId = null;
+  state.lastDrawnId = null;
+  doDiscard(playerIdx, tile);
+}
+
+// ───── 捨てる処理（共通） ─────
+function doDiscard(playerIdx, tile) {
+  const p = state.players[playerIdx];
+  state.discards.push({tile, by:playerIdx});
+  state.lastDiscard = {tile, by:playerIdx, byName:p.name};
+  log(`${p.name} → 「${tile.c}」を捨てた`);
+
+  // ポン/ロンの宣言を待つ
+  // モード別の処理：
+  //  - CPU対戦：自分(0)が捨てた → CPUの判定（しない）→ 次へ
+  //             CPU(他)が捨てた → 自分にポン/ロンの選択提示
+  //  - オンライン：相手プレイヤー(自分以外)に awaiting-claim を見せる
+  if (state.mode === 'online-host') {
+    // 捨てた人以外（=相手）にポン/ロン/パスの選択フェーズを見せる
+    state.phase = 'awaiting-claim';
+    state.turn = playerIdx;  // 直前に捨てた人をturnとして表示
+    broadcastState();
+    render();
+    return;
+  }
+  // CPUモード
+  if (playerIdx !== state.myIdx) {
+    // CPUが捨てた → 自分にポン/ロンの選択
+    state.phase = 'awaiting-claim';
+    state.turn = playerIdx;
+    render();
+    return;
+  }
+  // 自分が捨てた → CPUのポン判定
+  resolveClaimsFromCPUs();
+}
+
+// ───── CPU側の判定（ポンしない） ─────
+function resolveClaimsFromCPUs() {
+  // CPUは上がりもポンもしない仕様 → 次のプレイヤーへ
+  proceedToNextTurn();
+}
+
+// ───── プレイヤーがポン宣言 ─────
+function declarePon() {
+  const lastTile = state.lastDiscard.tile;
+  const me = getMe();
+
+  if (me.hand.length < 2) {
+    alert('手牌が2枚以上ないとポンできません');
+    return;
+  }
+
+  // ポン用ステート初期化
+  // selectedIds: タップ順に並ぶ手牌の選択（最大2枚）
+  // arrangement: 確定後の3枚の並び順を [tile, tile, tile] で保持。tile.isDiscard=true は捨て牌
+  window._ponState = {
+    lastTile,
+    selectedIds: [],
+    arrangement: null  // 並び替え段階に入ったら配列を入れる
+  };
+
+  showPonModal();
+}
+
+function showPonModal() {
+  const ps = window._ponState;
+  const me = getMe();
+  const lastTile = ps.lastTile;
+
+  let html;
+  if (!ps.arrangement) {
+    // ステップ1: 手牌から2枚選択
+    html = `
+      <h2>ポン！ 手牌から2枚選択</h2>
+      <p style="font-size:.9rem;margin-bottom:.6rem;">
+        「<span style="font-size:1.3rem;font-weight:700;color:var(--vermillion-dk);">${lastTile.c}</span>」と組み合わせて<strong>3文字の言葉</strong>を作ります。<br>
+        手牌から2枚をタップで選んでください。
+      </p>
+      <div style="background:#f9f4e3;border-radius:6px;padding:.8rem;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:.8rem;">
+        ${me.hand.map(t => {
+          const order = ps.selectedIds.indexOf(t.id);
+          const sel = order >= 0;
+          return `<div class="tile med pon-candidate${sel?' selected-pon':''}" data-id="${t.id}" onclick="togglePonCandidate(${t.id})" style="position:relative;">
+            ${t.c}
+            ${sel ? `<span style="position:absolute;top:-8px;right:-8px;background:var(--vermillion);color:white;width:20px;height:20px;border-radius:50%;font-size:.75rem;display:flex;align-items:center;justify-content:center;font-weight:700;">${order+1}</span>` : ''}
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="text-align:center;font-size:.85rem;color:#888;margin-bottom:.8rem;">
+        ${ps.selectedIds.length}/2 枚選択中
+      </div>
+      <div class="modal-actions">
+        <button class="action-btn" onclick="closeModal()">キャンセル</button>
+        <button class="action-btn primary" onclick="proceedToPonArrange()" ${ps.selectedIds.length===2?'':'disabled'}>並び順を決める ▶</button>
+      </div>
+    `;
+  } else {
+    // ステップ2: 並び順の決定
+    const arr = ps.arrangement;
+    html = `
+      <h2>ポン！ 並び順を決める</h2>
+      <p style="font-size:.9rem;margin-bottom:.8rem;">
+        この3枚で <strong>3文字の言葉</strong> になるよう並べてください。<br>
+        <span style="color:#888;font-size:.85rem;">◀ ▶ ボタンで位置を入れ替えられます。捨て牌は赤枠で表示されます。</span>
+      </p>
+      <div style="background:#f9f4e3;border-radius:6px;padding:1rem;display:flex;gap:8px;justify-content:center;align-items:flex-end;margin-bottom:.5rem;">
+        ${arr.map((t, i) => `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <div class="tile big" style="font-size:2rem;${t.isDiscard?'border:3px solid var(--vermillion);':''}">${t.c}</div>
+            <div style="display:flex;gap:2px;">
+              <button onclick="ponSwap(${i}, ${i-1})" ${i===0?'disabled':''} style="font-size:.9rem;padding:.2rem .5rem;background:#eee;border:1px solid #ccc;border-radius:3px;cursor:pointer;${i===0?'opacity:.3;':''}">◀</button>
+              <button onclick="ponSwap(${i}, ${i+1})" ${i===arr.length-1?'disabled':''} style="font-size:.9rem;padding:.2rem .5rem;background:#eee;border:1px solid #ccc;border-radius:3px;cursor:pointer;${i===arr.length-1?'opacity:.3;':''}">▶</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="text-align:center;font-size:1.1rem;font-family:'Klee One',serif;color:var(--ink);margin:1rem 0;">
+        できる言葉： <strong style="font-size:1.4rem;">${arr.map(t=>t.c).join('')}</strong>
+      </div>
+      <p style="font-size:.8rem;color:#888;text-align:center;margin-bottom:.6rem;">※ 言葉の正当性は対戦相手と確認してください</p>
+      <div class="modal-actions">
+        <button class="action-btn" onclick="ponBackToSelect()">◀ 戻る</button>
+        <button class="action-btn danger" onclick="confirmPonFinal()">ポン確定！</button>
+      </div>
+    `;
+  }
+  showModalWithHTML(html);
+}
+
+function togglePonCandidate(tileId) {
+  const ps = window._ponState;
+  const idx = ps.selectedIds.indexOf(tileId);
+  if (idx >= 0) {
+    ps.selectedIds.splice(idx, 1);
+  } else {
+    if (ps.selectedIds.length >= 2) return;
+    ps.selectedIds.push(tileId);
+  }
+  showPonModal();
+}
+
+function proceedToPonArrange() {
+  const ps = window._ponState;
+  if (ps.selectedIds.length !== 2) return;
+  const me = getMe();
+  const t1 = me.hand.find(t => t.id === ps.selectedIds[0]);
+  const t2 = me.hand.find(t => t.id === ps.selectedIds[1]);
+  // デフォルト並び順：選んだ順 + 捨て牌（末尾）
+  ps.arrangement = [
+    { id: t1.id, c: t1.c, isDiscard: false },
+    { id: t2.id, c: t2.c, isDiscard: false },
+    { id: ps.lastTile.id, c: ps.lastTile.c, isDiscard: true }
+  ];
+  showPonModal();
+}
+
+function ponBackToSelect() {
+  window._ponState.arrangement = null;
+  showPonModal();
+}
+
+function ponSwap(i, j) {
+  const arr = window._ponState.arrangement;
+  if (j < 0 || j >= arr.length) return;
+  [arr[i], arr[j]] = [arr[j], arr[i]];
+  showPonModal();
+}
+
+function confirmPonFinal() {
+  const ps = window._ponState;
+  closeModal();
+  if (isGuest()) {
+    sendActionToHost({ type: 'pon', arrangement: ps.arrangement });
+  } else {
+    hostExecutePon(ps.arrangement);
+  }
+  window._ponState = null;
+}
+
+// ホスト権威：ポン処理本体
+function hostExecutePon(arrangement) {
+  // ポンを実行するプレイヤー = 直前の捨て牌の "by 以外"。
+  // 2人対戦なので、捨てた人と異なる方
+  const ponBy = state.players.findIndex((p, i) => i !== state.lastDiscard.by);
+  const ponPlayer = state.players[ponBy];
+
+  // 手牌から「捨て牌以外」を取り出し、捨て牌は state.discards から取得
+  const orderedTiles = arrangement.map(a => {
+    if (a.isDiscard) {
+      const taken = state.discards.pop();
+      return taken.tile;
+    } else {
+      const idx = ponPlayer.hand.findIndex(t => t.id === a.id);
+      return ponPlayer.hand.splice(idx, 1)[0];
+    }
+  });
+
+  state.lastDiscard = null;
+  ponPlayer.melds.push({ type: 'pon', tiles: orderedTiles });
+  log(`${ponPlayer.name} 「ポン！」`, true);
+
+  // 全クライアントに「ポン」バナーを表示してもらう
+  if (isHost() && conn && conn.open) {
+    conn.send({ type: 'declaration', text: 'ポ ン' });
+  }
+  showDeclaration('ポ ン');
+
+  // ポン後は ponPlayer の番（手牌から1枚捨てる）
+  state.turn = ponBy;
+  state.phase = 'discard';
+  state.selectedTileId = null;
+
+  if (isHost()) broadcastState();
+  render();
+}
+
+function executePon(arrangement) {
+  // 互換性: CPUモードの古いコードからの呼び出しに備える
+  hostExecutePon(arrangement);
+}
+
+// ───── プレイヤーがロン宣言 ─────
+function declareRon() {
+  // ロンは最後の捨て牌をもらって14枚で上がり宣言
+  // 単語の判定はプレイヤー間で行う想定 → 確認モーダルを出す
+  const lastTile = state.lastDiscard.tile;
+  const me = getMe();
+  // 仮想的に手牌に追加して上がり構成入力モーダルへ
+  showWinSubmissionModal('ron', lastTile);
+}
+
+// ───── パス ─────
+function passClaim() {
+  if (isGuest()) {
+    sendActionToHost({ type: 'pass' });
+    return;
+  }
+  hostPassClaim();
+}
+
+function hostPassClaim() {
+  state.lastDiscard = null;
+  state.phase = 'discard';
+  if (isHost()) broadcastState();
+  proceedToNextTurn();
+}
+
+// ───── ツモ上がり宣言 ─────
+function declareTsumo() {
+  showWinSubmissionModal('tsumo', null);
+}
+
+// ───── 上がり構成入力モーダル ─────
+function showWinSubmissionModal(kind, ronTile) {
+  const me = getMe();
+  const allTiles = [...me.hand];
+  if (kind === 'ron' && ronTile) allTiles.push(ronTile);
+
+  const meldsCount = me.melds.length;
+  const need3 = 4 - meldsCount;
+  const need2 = 1;
+
+  if (allTiles.length !== need3*3 + need2*2) {
+    alert('牌の数が合いません。手牌の状態を確認してください。');
+    return;
+  }
+
+  // モーダルHTML
+  let html = `
+    <h2>上 が り 構 成 を 確 定</h2>
+    <p>各組をタップで埋めて、<strong>3文字×${need3}組 + 2文字×1組</strong> を確定してください。</p>
+    <p style="font-size:.85rem;opacity:.75;margin-bottom:.6rem;">※ 言葉の正当性は対戦相手と話し合って判定してください</p>
+
+    <div id="groupSlots"></div>
+
+    <div style="background:#f9f4e3;padding:.7rem;border-radius:6px;margin:.8rem 0;">
+      <div style="font-size:.75rem;color:#888;letter-spacing:.2em;margin-bottom:.4rem;">未配置の牌（タップで空き組に入る）：</div>
+      <div id="unassignedTiles" style="display:flex;flex-wrap:wrap;gap:5px;min-height:54px;align-items:center;"></div>
+    </div>
+  `;
+  if (meldsCount > 0) {
+    html += `<div style="margin-top:.7rem;"><div style="font-size:.75rem;color:#888;letter-spacing:.2em;margin-bottom:.3rem;">確定済み（メルド）：</div><div style="display:flex;gap:6px;flex-wrap:wrap;">`;
+    me.melds.forEach((m) => {
+      html += `<div class="meld" style="border-color:#888;">${m.tiles.map(t=>`<div class="tile small">${t.c}</div>`).join('')}</div>`;
+    });
+    html += `</div></div>`;
+  }
+  html += `
+    <div class="modal-actions">
+      <button class="action-btn" onclick="closeModal()">キャンセル</button>
+      <button class="action-btn" onclick="resetWinBuilder()">全クリア</button>
+      <button class="action-btn danger" id="confirmWinBtn" onclick="confirmWin('${kind}', ${ronTile?ronTile.id:'null'})" disabled>${kind==='tsumo'?'ツ モ':'ロ ン'} 上 が り ！</button>
+    </div>
+  `;
+
+  showModalWithHTML(html);
+
+  // 上がり構築用ステート初期化
+  winBuilder = {
+    kind,
+    ronTile,
+    pool: allTiles.slice(),
+    groups: [],
+    need3,
+    need2
+  };
+  // 3文字グループ ×N + 2文字グループ ×1
+  for (let i = 0; i < need3; i++) winBuilder.groups.push({size:3, tiles:[], slotId:`g${i}`});
+  winBuilder.groups.push({size:2, tiles:[], slotId:`g4`});
+
+  // 現在の手牌のスロット振り分け状況からプリフィル
+  // me.hand のタイルが slotId='g0'〜'g4' を持っていれば、対応するgroupに入れる
+  // ロン牌は新規追加なので未配置のまま
+  for (const tile of me.hand) {
+    if (!tile.slotId || tile.slotId === 'pool') continue;
+    const group = winBuilder.groups.find(g => g.slotId === tile.slotId);
+    if (group && group.tiles.length < group.size) {
+      group.tiles.push(tile);
+    }
+  }
+
+  renderWinBuilder();
+}
+
+let winBuilder = null;
+
+function renderWinBuilder() {
+  if (!winBuilder) return;
+  // 未配置の牌
+  const used = new Set(winBuilder.groups.flatMap(g => g.tiles.map(t=>t.id)));
+  const unassigned = winBuilder.pool.filter(t => !used.has(t.id));
+  const ut = document.getElementById('unassignedTiles');
+  if (ut) {
+    if (unassigned.length === 0) {
+      ut.innerHTML = '<div style="color:#aaa;font-size:.9rem;padding:.5rem;">すべての牌を配置済み ✓</div>';
+    } else {
+      ut.innerHTML = unassigned.map(t =>
+        `<div class="tile med" style="cursor:pointer;font-size:1.4rem;" onclick="addToFirstAvailable(${t.id})">${t.c}</div>`
+      ).join('');
+    }
+  }
+  // スロット
+  const gs = document.getElementById('groupSlots');
+  if (gs) {
+    gs.innerHTML = winBuilder.groups.map((g,i) => {
+      const tilesHtml = g.tiles.map(t =>
+        `<div class="tile med" style="cursor:pointer;font-size:1.4rem;" onclick="removeFromGroup(${i},${t.id})">${t.c}</div>`
+      ).join('');
+      const placeholders = Array(g.size - g.tiles.length).fill(0).map(()=>
+        `<div class="tile med" style="opacity:.2;background:#ddd;border:1px dashed #aaa;box-shadow:none;"></div>`
+      ).join('');
+      const isFull = g.tiles.length === g.size;
+      const labelText = g.size === 2 ? '２文字' : '３文字';
+      const bg = isFull ? '#e8f0d8' : '#f9f4e3';
+      const borderColor = isFull ? '#9bb766' : 'transparent';
+      return `
+        <div style="background:${bg};border:2px solid ${borderColor};border-radius:6px;padding:.5rem .6rem;margin-bottom:.45rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div style="font-size:.78rem;color:#666;letter-spacing:.2em;min-width:64px;font-family:'Shippori Mincho',serif;font-weight:700;">${labelText}</div>
+          <div style="display:flex;gap:4px;flex:1;">${tilesHtml}${placeholders}</div>
+          ${g.tiles.length > 0 ? `<button onclick="clearGroup(${i})" style="font-size:.72rem;padding:.25rem .55rem;background:#eee;border:1px solid #ccc;border-radius:3px;cursor:pointer;">クリア</button>` : ''}
+        </div>`;
+    }).join('');
+  }
+  // ボタン状態
+  const btn = document.getElementById('confirmWinBtn');
+  if (btn) {
+    const allFilled = winBuilder.groups.every(g => g.tiles.length === g.size);
+    btn.disabled = !allFilled;
+  }
+}
+
+function addToFirstAvailable(tileId) {
+  const t = winBuilder.pool.find(x => x.id === tileId);
+  if (!t) return;
+  // 既に配置されていれば一旦削除（重複防止）
+  for (const g of winBuilder.groups) {
+    const idx = g.tiles.findIndex(x => x.id === tileId);
+    if (idx >= 0) g.tiles.splice(idx,1);
+  }
+  // 最初の空きグループへ
+  for (const g of winBuilder.groups) {
+    if (g.tiles.length < g.size) {
+      g.tiles.push(t);
+      renderWinBuilder();
+      return;
+    }
+  }
+}
+
+function removeFromGroup(gi, tileId) {
+  const g = winBuilder.groups[gi];
+  const idx = g.tiles.findIndex(t => t.id === tileId);
+  if (idx >= 0) {
+    g.tiles.splice(idx,1);
+    renderWinBuilder();
+  }
+}
+
+function clearGroup(gi) {
+  winBuilder.groups[gi].tiles = [];
+  renderWinBuilder();
+}
+
+function resetWinBuilder() {
+  if (!winBuilder) return;
+  winBuilder.groups.forEach(g => g.tiles = []);
+  renderWinBuilder();
+}
+
+// ───── 上がり確定 ─────
+function confirmWin(kind, ronTileId) {
+  // 全グループの単語と、メルドの単語をリスト化
+  const me = getMe();
+  const meldWords = me.melds.map(m => m.tiles.map(t=>t.c).join(''));
+  const builderWords = winBuilder.groups.map(g => g.tiles.map(t=>t.c).join(''));
+  const allWords = [...meldWords, ...builderWords];
+
+  // 確認モーダル：すべての言葉が実在するか相手と確認
+  let html = `
+    <h2 style="text-align:center;">上 が り 宣 言</h2>
+    <p style="text-align:center;">以下の言葉で上がりを宣言します。<br><strong>対戦相手と確認し、すべて実在する言葉なら確定してください。</strong></p>
+    <div style="background:#f9f4e3;padding:1rem;border-radius:6px;margin:1rem 0;text-align:center;">
+  `;
+  allWords.forEach(w => {
+    html += `<span class="word-display">${w}</span>`;
+  });
+  html += `
+    </div>
+    <p style="font-size:.85rem;opacity:.75;text-align:center;">※ 実在しない言葉が含まれていれば「やり直す」を押してください</p>
+    <div class="modal-actions">
+      <button class="action-btn" onclick="closeModal();">やり直す</button>
+      <button class="action-btn danger" onclick="finalizeWin('${kind}', ${ronTileId})">確 定 ！  上 が り</button>
+    </div>
+  `;
+  showModalWithHTML(html);
+}
+
+function finalizeWin(kind, ronTileId) {
+  closeModal();
+  // 上がりプレイヤー（自分）の言葉リストを生成
+  const me = getMe();
+  const meldWords = me.melds.map(m => m.tiles.map(t=>t.c).join(''));
+  const builderWords = winBuilder.groups.map(g => g.tiles.map(t=>t.c).join(''));
+  const allWords = [...meldWords, ...builderWords];
+
+  if (isGuest()) {
+    sendActionToHost({ type: 'finalize-win', kind, playerIdx: state.myIdx, words: allWords });
+    return;
+  }
+  hostFinalizeWin(kind, state.myIdx, allWords);
+}
+
+function hostFinalizeWin(kind, playerIdx, words) {
+  // 全クライアントに「ツモ/ロン」バナー表示と上がり画面を見せる
+  if (isHost() && conn && conn.open) {
+    conn.send({ type: 'declaration', text: kind === 'tsumo' ? 'ツ モ' : 'ロ ン' });
+    conn.send({ type: 'win', playerIdx, kind, words });
+  }
+  showDeclaration(kind === 'tsumo' ? 'ツ モ' : 'ロ ン');
+  setTimeout(() => showWinScreenWithWords(playerIdx, kind, words), 1200);
+}
+
+// 受信側用：ホストから送られてきた上がり情報で上がり画面を表示
+function showRemoteWinScreen(playerIdx, kind, words) {
+  setTimeout(() => showWinScreenWithWords(playerIdx, kind, words), 1200);
+}
+
+// ───── 次のプレイヤーへ ─────
+function proceedToNextTurn() {
+  const next = (state.turn + 1) % state.players.length;
+  setTimeout(() => doDraw(next), 600);
+}
+
+// ───── CPUのターン ─────
+function cpuTurn(playerIdx) {
+  const p = state.players[playerIdx];
+  // CPUのロジック：単純に手牌+ツモ牌から、最も持ってる文字が少ない（孤立した）牌を捨てる
+  const allTiles = [...p.hand];
+  if (p.drawn) allTiles.push(p.drawn);
+
+  // 各文字の出現数カウント
+  const charCount = {};
+  allTiles.forEach(t => charCount[t.c] = (charCount[t.c]||0)+1);
+
+  // 「ー」「っ」「ん」「ゃ」「ゅ」「ょ」など単独で使いにくい文字を優先で捨てる
+  const lonelyChars = ['ー','っ','ん','ゃ','ゅ','ょ'];
+
+  // 捨てる候補：
+  // 1) 単独（charCount === 1）の中から、lonelyCharsを優先
+  // 2) なければ単独の中からランダム
+  // 3) すべて2個以上ある場合 → 一番多い文字以外から1個
+
+  let candidates = allTiles.filter(t => charCount[t.c] === 1);
+  let lonely = candidates.filter(t => lonelyChars.includes(t.c));
+  let pick;
+  if (lonely.length > 0) {
+    pick = lonely[Math.floor(Math.random()*lonely.length)];
+  } else if (candidates.length > 0) {
+    pick = candidates[Math.floor(Math.random()*candidates.length)];
+  } else {
+    // ツモ牌があればツモ牌を捨てる
+    pick = p.drawn || allTiles[Math.floor(Math.random()*allTiles.length)];
+  }
+
+  // CPUは上がらない仕様 → ツモ上がり判定なし
+
+  // 牌を捨てる
+  if (p.drawn && pick.id === p.drawn.id) {
+    p.drawn = null;
+  } else {
+    const idx = p.hand.findIndex(t => t.id === pick.id);
+    if (idx >= 0) p.hand.splice(idx, 1);
+    if (p.drawn) {
+      p.hand.push(p.drawn);
+      p.drawn = null;
+      sortHand(p);
+    }
+  }
+  doDiscard(playerIdx, pick);
+}
+
+// ───── 上がり画面 ─────
+function showWinScreen(playerIdx, kind) {
+  const winner = state.players[playerIdx];
+  const isYou = playerIdx === state.myIdx;
+
+  let allWords = winner.melds.map(m => m.tiles.map(t=>t.c).join(''));
+  if (isYou && winBuilder) {
+    allWords = allWords.concat(winBuilder.groups.map(g => g.tiles.map(t=>t.c).join('')));
+  } else {
+    // CPUの場合は表示用の構成を再構築
+    const allTiles = [...winner.hand];
+    if (winner.drawn) allTiles.push(winner.drawn);
+    const need3 = 4 - winner.melds.length;
+    let pos = 0;
+    for (let i = 0; i < need3; i++) {
+      allWords.push(allTiles.slice(pos, pos+3).map(t=>t.c).join(''));
+      pos += 3;
+    }
+    allWords.push(allTiles.slice(pos, pos+2).map(t=>t.c).join(''));
+  }
+
+  let html = `
+    <div class="win-screen">
+      <h2>${kind === 'tsumo' ? 'ツ モ 上 が り' : 'ロ ン 上 が り'}</h2>
+      <div class="stamp">和 了</div>
+      <div class="winner-name">${winner.name} の 勝 利！</div>
+      <div class="win-words">
+  `;
+  allWords.forEach(w => { html += `<div class="win-word">${w}</div>`; });
+  html += `
+      </div>
+      <div class="modal-actions" style="justify-content:center;">
+        <button class="action-btn" onclick="returnToTitle()">タイトルへ</button>
+        <button class="action-btn primary" onclick="restartGame()">もう一度</button>
+      </div>
+    </div>
+  `;
+  showModalWithHTML(html);
+}
+
+// ───── 上がり画面（既知の単語リストで表示） ─────
+function showWinScreenWithWords(playerIdx, kind, words) {
+  const winner = state.players[playerIdx];
+  let html = `
+    <div class="win-screen">
+      <h2>${kind === 'tsumo' ? 'ツ モ 上 が り' : 'ロ ン 上 が り'}</h2>
+      <div class="stamp">和 了</div>
+      <div class="winner-name">${winner.name} の 勝 利！</div>
+      <div class="win-words">
+  `;
+  words.forEach(w => { html += `<div class="win-word">${w}</div>`; });
+  html += `
+      </div>
+      <div class="modal-actions" style="justify-content:center;">
+        <button class="action-btn" onclick="returnToTitle()">タイトルへ</button>
+        <button class="action-btn primary" onclick="restartGame()">もう一度</button>
+      </div>
+    </div>
+  `;
+  showModalWithHTML(html);
+}
+
+// ───── 流局 ─────
+function showDrawScreen() {
+  const html = `
+    <div class="draw-screen">
+      <h2>流  局</h2>
+      <div class="stamp">荒 牌</div>
+      <p>山牌が尽きました。誰も上がれませんでした。</p>
+      <div class="modal-actions" style="justify-content:center;">
+        <button class="action-btn" onclick="returnToTitle()">タイトルへ</button>
+        <button class="action-btn primary" onclick="restartGame()">もう一度</button>
+      </div>
+    </div>
+  `;
+  showModalWithHTML(html);
+}
+
+// ───── 大宣言バナー ─────
+function showDeclaration(text) {
+  const div = document.createElement('div');
+  div.className = 'declaration-banner';
+  div.textContent = text;
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 1400);
+}
+
+// ───── モーダル ─────
+function showModal(type) {
+  if (type === 'rules') showRulesModal();
+  else if (type === 'arrange') showArrangeModal();
+}
+
+function showRulesModal() {
+  const html = `
+    <h2>遊 び 方</h2>
+    <h3>ゲームの目的</h3>
+    <p>麻雀の要領で牌を引いて捨てて、<strong>「2文字×1組 + 3文字×4組」の合計5組の言葉</strong>をいち早く揃えた人が勝ち！</p>
+
+    <h3>基本の流れ</h3>
+    <ul>
+      <li>各プレイヤーに <strong>13個</strong> の牌が配られます</li>
+      <li>自分の番が来たら <strong>1個ツモる</strong>（合計14個）</li>
+      <li>5組の言葉が揃えば <strong>「ツモ上がり」</strong> 宣言</li>
+      <li>揃わなければ <strong>1個捨てて</strong> 次の人へ</li>
+    </ul>
+
+    <h3>ポン</h3>
+    <p>他の人が捨てた牌と <strong>自分の手牌2枚</strong> を組み合わせて <strong>3文字の言葉</strong> を作れる場合、「ポン」と宣言してその捨て牌をもらえます。3文字グループとして公開され、以後組み替え不可になります。ポン後は手牌から1枚捨てて自分の番が続きます。</p>
+
+    <h3>ロン</h3>
+    <p>他の人が捨てた牌が <strong>自分の上がり牌</strong> なら「ロン」と宣言して上がれます。</p>
+
+    <h3>言葉の判定</h3>
+    <p style="background:#f9f4e3;padding:.6rem;border-radius:4px;border-left:3px solid var(--vermillion);">
+      ⚠ <strong>言葉が実在するかどうかは、プレイヤー同士で話し合って決めます。</strong>このゲームでは辞書チェックは行いません。固有名詞、外来語、方言など、参加者全員が納得すれば OK です。
+    </p>
+
+    <h3>使う牌（全120個）</h3>
+    <p>「を」を除く45音 × 各2個（90個）<br>濁点・半濁点・拗音・長音 30種 × 各1個（30個）</p>
+
+    <div class="modal-actions">
+      <button class="action-btn primary" onclick="closeModal()">閉 じ る</button>
+    </div>
+  `;
+  showModalWithHTML(html);
+}
+
+function showArrangeModal() {
+  // 手牌の並び替え（あいうえお順 / カスタム）
+  const html = `
+    <h2>手 牌 整 理</h2>
+    <p>手牌を並び替えます。</p>
+    <div class="modal-actions">
+      <button class="action-btn" onclick="closeModal()">閉じる</button>
+      <button class="action-btn primary" onclick="sortMyHand()">あいうえお順に並べる</button>
+    </div>
+  `;
+  showModalWithHTML(html);
+}
+
+function sortMyHand() {
+  // プール内のタイルだけをあいうえお順にソートする（スロット内は触らない）
+  const me = getMe();
+  const order = [...BASIC_KANA, ...SPECIAL_KANA];
+  // hand配列を「順序を保ったまま」並び替え：プールのタイルだけ抽出してソートし、元の位置に戻す
+  const poolIndices = [];
+  const poolTiles = [];
+  me.hand.forEach((t, i) => {
+    if (t.slotId === 'pool' || !t.slotId) {
+      poolIndices.push(i);
+      poolTiles.push(t);
+    }
+  });
+  poolTiles.sort((a, b) => order.indexOf(a.c) - order.indexOf(b.c));
+  poolIndices.forEach((origIdx, k) => {
+    me.hand[origIdx] = poolTiles[k];
+  });
+  closeModal();
+  render();
+}
+
+function showModalWithHTML(html) {
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modal').classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+function confirmReturnTitle() {
+  if (confirm('ゲームを中断してタイトルに戻りますか？')) returnToTitle();
+}
+
+function returnToTitle() {
+  closeModal();
+  state = null;
+  document.getElementById('gameScreen').classList.remove('active');
+  document.getElementById('titleScreen').style.display = 'flex';
+  document.getElementById('logBox').style.display = 'none';
+  document.getElementById('logBox').innerHTML = '';
+  // PeerJS接続を解除
+  if (conn) { try { conn.close(); } catch(e){} conn = null; }
+  if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
+  hideOnlineMenu();
+}
+
+function restartGame() {
+  closeModal();
+  document.getElementById('logBox').innerHTML = '';
+  // オンラインモードでは再戦が複雑になるため、タイトルへ戻すのみとする
+  if (state && (state.mode === 'online-host' || state.mode === 'online-guest')) {
+    returnToTitle();
+    return;
+  }
+  state = null;
+  startCpuGame();
+}
+
+</script>
+</body>
+</html>
