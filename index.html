@@ -682,6 +682,87 @@
     font-weight: 600;
   }
 
+  /* 振り返り画面 */
+  .review-modal {
+    max-width: 720px !important;
+  }
+  .review-player {
+    background: #f9f4e3;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    padding: .6rem .8rem;
+    margin-bottom: .8rem;
+    color: #222;
+  }
+  .review-player.winner {
+    border-color: var(--vermillion);
+    background: linear-gradient(180deg, #fff7e8 0%, #f9eaa6 100%);
+    box-shadow: 0 0 0 1px var(--gold);
+  }
+  .review-player-header {
+    font-family: 'Shippori Mincho', serif;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-bottom: .4rem;
+    color: #333;
+    letter-spacing: .1em;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .review-player.winner .review-player-header {
+    color: var(--vermillion-dk);
+  }
+  .review-winner-badge {
+    background: var(--vermillion);
+    color: white;
+    font-size: .7rem;
+    padding: .15rem .5rem;
+    border-radius: 3px;
+    letter-spacing: .15em;
+  }
+  .review-section-label {
+    font-size: .7rem;
+    color: #888;
+    letter-spacing: .15em;
+    margin: .35rem 0 .25rem;
+    font-family: 'Shippori Mincho', serif;
+  }
+  .review-tile-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .review-group {
+    display: flex;
+    gap: 2px;
+    background: rgba(200, 54, 44, .08);
+    padding: 3px 5px;
+    border-radius: 4px;
+    border: 1px solid rgba(200, 54, 44, .25);
+  }
+  .review-group.meld {
+    background: rgba(212, 166, 74, .15);
+    border-color: rgba(212, 166, 74, .5);
+  }
+  .review-group.pool-tile {
+    background: rgba(0,0,0,.05);
+    border-color: rgba(0,0,0,.15);
+  }
+  .review-empty-slot {
+    width: 36px; height: 50px;
+    border: 1px dashed #bbb;
+    border-radius: 3px;
+    background: rgba(0,0,0,.04);
+  }
+  .review-rematch-status {
+    font-size: .85rem;
+    color: var(--gold);
+    text-align: center;
+    margin-top: .8rem;
+  }
+
   /* 流局 */
   .draw-screen { text-align: center; }
   .draw-screen .stamp {
@@ -820,18 +901,23 @@
         友 人 対 戦
       </button>
     </div>
-    <div class="hint" style="margin-top:1rem;">CPU対戦：1人で気軽に。友人対戦：オンラインで対戦（PeerJS使用）</div>
   </div>
 
   <!-- オンラインメニュー -->
   <div class="player-select" id="onlineMenu" style="display:none;">
     <h3>友 人 対 戦</h3>
     <div class="player-buttons">
-      <button class="pbtn" onclick="hostStartOnline()">部 屋 を 作 る（ホスト）</button>
+      <button class="pbtn" onclick="showHostNameForm()">部 屋 を 作 る（ホスト）</button>
       <button class="pbtn" onclick="showJoinForm()">部 屋 に 参 加（ゲスト）</button>
       <button class="pbtn" style="background:#ddd;" onclick="hideOnlineMenu()">戻 る</button>
     </div>
     <div id="onlineStatus" style="margin-top:1rem;font-size:.9rem;color:var(--paper);"></div>
+  </div>
+
+  <!-- ロビー画面 -->
+  <div class="player-select" id="lobbyScreen" style="display:none;">
+    <h3 id="lobbyTitle">対 戦 ロ ビ ー</h3>
+    <div id="lobbyContent"></div>
   </div>
 
   <button class="rules-link" onclick="showModal('rules')">▸ 遊 び 方 を 見 る</button>
@@ -931,30 +1017,39 @@ let state = null;
      ホストがロジック実行後に state をブロードキャスト
    ============================================================ */
 let peer = null;        // PeerJS インスタンス
-let conn = null;        // ホスト⇔ゲスト 通信用 DataConnection
+let conn = null;        // ゲスト用：ホストへの DataConnection
 let myPeerId = null;    // 自分の PeerID
+
+// ホスト用：ゲスト接続を管理
+// hostConns: Array<{conn:DataConnection, name:string, playerIdx:number, ready:boolean, rematch:boolean}>
+let hostConns = [];
+// ゲスト用：自分の名前と再戦フラグ
+let myGuestName = null;
+let myRematchFlag = false;
+// ロビー用：参加メンバーリスト（ホストのみ管理。ゲストはホストから受信）
+// lobbyMembers: Array<{name:string, isHost:boolean, peerId:string|null}>
+let lobbyMembers = [];
 
 function isOnline() { return state && (state.mode === 'online-host' || state.mode === 'online-guest'); }
 function isHost()   { return state && state.mode === 'online-host'; }
 function isGuest()  { return state && state.mode === 'online-guest'; }
 
-// オンライン中、stateの変更後にホストがゲストに送信
-// ゲストが見るべきでない情報（ホストの手牌の中身）は隠匿する
+// オンライン中、stateの変更後にホストが全ゲストに送信
+// 各ゲストには「自分以外のプレイヤーの手牌」を隠匿した state を個別送信
 function broadcastState() {
-  if (!isHost() || !conn || !conn.open) return;
-  const safe = JSON.parse(JSON.stringify(state));
-  // 受信者(ゲスト)は myIdx=1。1以外のプレイヤー = ホスト(0) のhandを隠す。
-  // ※ただし state.lastDiscard やメルドは公開情報なのでそのまま。
-  safe.players.forEach((p, i) => {
-    if (i === 1) return;  // ゲスト自身の手牌は残す
-    // 隠匿：手牌の枚数だけ伝え、各タイルは中身が分からないダミーに置き換え
-    p.hand = p.hand.map(t => ({ id: t.id, c: '?', hidden: true }));
-    if (p.drawn) p.drawn = { id: p.drawn.id, c: '?', hidden: true };
+  if (!isHost()) return;
+  hostConns.forEach(hc => {
+    if (!hc.conn || !hc.conn.open) return;
+    const targetIdx = hc.playerIdx;  // このゲストのプレイヤーインデックス
+    const safe = JSON.parse(JSON.stringify(state));
+    safe.players.forEach((p, i) => {
+      if (i === targetIdx) return;  // 受信者自身の手牌は残す
+      p.hand = p.hand.map(t => ({ id: t.id, c: '?', hidden: true }));
+      if (p.drawn) p.drawn = { id: p.drawn.id, c: '?', hidden: true };
+    });
+    safe.wall = new Array(state.wall.length).fill(null);
+    try { hc.conn.send({ type: 'state', state: safe }); } catch(e) {}
   });
-  // 山牌の中身もゲストには不要 → 残数のみで良いが、length比較で困らないよう
-  // ダミー配列に置き換える
-  safe.wall = new Array(state.wall.length).fill(null);
-  conn.send({ type: 'state', state: safe });
 }
 
 // ゲストがアクションをホストに送信
@@ -964,72 +1059,99 @@ function sendActionToHost(action) {
   return true;
 }
 
-// ホストがゲストからのアクションを受け取った時の処理
-function handleGuestAction(action) {
+// ホストから全ゲストへメッセージブロードキャスト
+function hostBroadcast(msg) {
   if (!isHost()) return;
+  hostConns.forEach(hc => {
+    if (hc.conn && hc.conn.open) {
+      try { hc.conn.send(msg); } catch(e) {}
+    }
+  });
+}
+
+// ホストから特定のゲスト1人に送信
+function hostSendTo(playerIdx, msg) {
+  if (!isHost()) return;
+  const hc = hostConns.find(h => h.playerIdx === playerIdx);
+  if (hc && hc.conn && hc.conn.open) {
+    try { hc.conn.send(msg); } catch(e) {}
+  }
+}
+
+// ホストがゲストからのアクションを受け取った時の処理
+function handleGuestAction(action, fromConn) {
+  if (!isHost()) return;
+  // 送信元のplayerIdxを特定
+  const hc = hostConns.find(h => h.conn === fromConn);
+  const fromIdx = hc ? hc.playerIdx : null;
+
   switch (action.type) {
     case 'discard':
       hostDoDiscard(action.playerIdx, action.tileId);
       break;
     case 'pon':
-      hostExecutePon(action.arrangement);
+      hostExecutePon(action.arrangement, fromIdx);
       break;
     case 'pass':
-      hostPassClaim();
+      hostPassClaim(fromIdx);
       break;
     case 'win-claim':
-      // ゲスト(A)が上がり申請 → ホスト(B)に承認モーダル表示
-      window._pendingApproval = {
-        kind: action.kind, playerIdx: action.playerIdx, words: action.words
-      };
-      showWinApprovalModal(action.kind, action.playerIdx, action.words);
-      break;
-    case 'win-approved':
-      // ゲスト(B)が承認 → 上がり成立
-      if (window._pendingWin) {
-        const pw = window._pendingWin;
-        window._pendingWin = null;
-        closeModal();  // ホスト側の「申請中」モーダルを閉じる
-        hostFinalizeWin(pw.kind, pw.playerIdx, pw.words);
-      }
-      break;
-    case 'win-rejected':
-      // ゲスト(B)が却下 → ゲーム続行
-      if (window._pendingWin) {
-        window._pendingWin = null;
-        closeModal();
-        log('あなたの上がりは却下されました（チョンボ扱い）', true);
-        if (conn && conn.open) {
-          conn.send({ type: 'log', message: '上がりは却下されました', highlight: true });
-        }
-        // ゲームは中断されないが、特に状態は変えない（discardフェーズ継続）
-        broadcastState();
-        render();
-      }
+      // ゲストが上がり申請 → 全員(上がる人除く)に承認を求める
+      startApprovalFlow(action.kind, action.playerIdx, action.words);
       break;
   }
 }
 
 // ゲストがホストから受け取ったメッセージを処理
 function handleHostMessage(msg) {
-  if (msg.type === 'state') {
-    // 自分の hand の順序・slotId は保持してマージする
-    let mySavedHandOrder = null;
-    if (state && state.players && state.players[1]) {
-      mySavedHandOrder = state.players[1].hand.map(t => ({ id: t.id, slotId: t.slotId }));
+  if (msg.type === 'lobby-update') {
+    // ロビーメンバー更新
+    lobbyMembers = msg.members;
+    if (document.getElementById('lobbyScreen').style.display !== 'none') {
+      renderGuestLobby();
     }
+    return;
+  }
+  if (msg.type === 'lobby-full') {
+    alert('部屋が満員です（4人まで）');
+    returnToTitle();
+    return;
+  }
+  if (msg.type === 'game-start') {
+    // ゲーム開始通知。state は次の 'state' メッセージで来る
+    state = null;
+    document.getElementById('lobbyScreen').style.display = 'none';
+    document.getElementById('titleScreen').style.display = 'none';
+    document.getElementById('gameScreen').classList.add('active');
+    document.getElementById('logBox').style.display = 'block';
+    // 自分の myIdx をメモ
+    window._guestMyIdx = msg.myIdx;
+    window._guestMembers = msg.members;
+    return;
+  }
 
+  if (msg.type === 'state') {
+    const myIdx = window._guestMyIdx || 1;
+    let mySavedHandOrder = null;
+    if (state && state.players && state.players[myIdx]) {
+      mySavedHandOrder = state.players[myIdx].hand.map(t => ({ id: t.id, slotId: t.slotId }));
+    }
     state = msg.state;
     state.mode = 'online-guest';
-    state.myIdx = 1;
+    state.myIdx = myIdx;
 
-    // 名前を自分視点に書き換え
-    if (state.players[0]) state.players[0].name = '相手（ホスト）';
-    if (state.players[1]) state.players[1].name = 'あなた（ゲスト）';
+    // 名前を自分視点に書き換え（lobbyMembers ベース）
+    const members = window._guestMembers || lobbyMembers;
+    state.players.forEach((p, i) => {
+      const m = members[i];
+      if (m) {
+        p.name = (i === myIdx) ? `あなた（${m.name}）` : m.name + (m.isHost?'（ホスト）':'');
+      }
+    });
 
-    // 自分のhandをマージ：受信したhandから、保持していた順序に並び替え + slotId復元
-    if (mySavedHandOrder && state.players[1]) {
-      const incoming = state.players[1].hand;
+    // 自分のhand順序・slotIdをマージ
+    if (mySavedHandOrder && state.players[myIdx]) {
+      const incoming = state.players[myIdx].hand;
       const incomingIds = new Set(incoming.map(t => t.id));
       const incomingById = new Map(incoming.map(t => [t.id, t]));
       const merged = [];
@@ -1042,15 +1164,14 @@ function handleHostMessage(msg) {
         }
       }
       for (const t of incoming) {
-        if (incomingIds.has(t.id)) {
-          merged.push(t);
-        }
+        if (incomingIds.has(t.id)) merged.push(t);
       }
-      state.players[1].hand = merged;
+      state.players[myIdx].hand = merged;
     }
     render();
-  } else if (msg.type === 'win') {
-    showRemoteWinScreen(msg.playerIdx, msg.kind, msg.words);
+  } else if (msg.type === 'win-review') {
+    // 全プレイヤーの振り返り画面
+    setTimeout(() => showReviewScreen(msg.reviewData), 1200);
   } else if (msg.type === 'draw') {
     showDrawScreen();
   } else if (msg.type === 'declaration') {
@@ -1058,12 +1179,24 @@ function handleHostMessage(msg) {
   } else if (msg.type === 'log') {
     log(msg.message, msg.highlight);
   } else if (msg.type === 'win-pending') {
-    // ホスト(A)が上がり申請 → ゲスト(B=自分)に承認モーダル
+    // 誰かが上がり宣言 → 自分は承認/却下を選択
     showWinApprovalModal(msg.kind, msg.playerIdx, msg.words);
+  } else if (msg.type === 'win-claimer-pending') {
+    // 自分（ゲスト）が上がり申請 → 待機画面
+    showWinPendingScreen(msg.words);
+  } else if (msg.type === 'approval-progress') {
+    const progress = document.getElementById('approvalProgress');
+    if (progress) progress.textContent = `承認状況：${msg.approved} / ${msg.need} 人`;
   } else if (msg.type === 'win-rejected-notice') {
-    // 自分の上がりが却下された通知
     closeModal();
-    log('あなたの上がりは却下されました（チョンボ扱い）', true);
+    log('上がりは却下されました（チョンボ扱い）', true);
+  } else if (msg.type === 'rematch-progress') {
+    updateRematchProgress(msg);
+  } else if (msg.type === 'rematch-start') {
+    // 再戦開始：state は次の 'state' で来る
+    closeModal();
+    state = null;
+    window._guestMyIdx = msg.myIdx;
   }
 }
 
@@ -1096,16 +1229,13 @@ function setupPeer(asHost) {
   });
 }
 
+// ゲスト用：ホストへの conn のハンドラ登録
 function attachConnHandlers() {
   conn.on('data', data => {
-    if (isHost()) {
-      if (data && data.type === 'action') handleGuestAction(data.action);
-    } else {
-      if (data) handleHostMessage(data);
-    }
+    if (data) handleHostMessage(data);
   });
   conn.on('close', () => {
-    alert('相手が切断しました。タイトルに戻ります。');
+    alert('ホストが切断しました。タイトルに戻ります。');
     returnToTitle();
   });
   conn.on('error', err => {
@@ -1130,30 +1260,112 @@ function setOnlineStatus(msg) {
   if (el) el.innerHTML = msg;
 }
 
+// ───── 名前入力フォーム（ホスト用） ─────
+function showHostNameForm() {
+  setOnlineStatus(`
+    <div style="margin-bottom:.5rem;font-size:.9rem;">あなたの名前を入力してください：</div>
+    <input type="text" id="hostNameField" placeholder="名前" maxlength="12" style="width:100%;font-size:.95rem;padding:.5rem;border-radius:4px;border:1px solid #ccc;color:#333;" autocomplete="off">
+    <button class="action-btn primary" onclick="hostStartOnline()" style="margin-top:.6rem;">部屋を作る</button>
+  `);
+}
+
 // ───── ホスト：部屋作成 ─────
 async function hostStartOnline() {
+  const nameField = document.getElementById('hostNameField');
+  const name = nameField ? (nameField.value.trim() || 'ホスト') : 'ホスト';
+  myGuestName = name;  // ホストもこの変数に名前保存
   setOnlineStatus('ピアサーバーに接続中…');
   try {
     const id = await setupPeer(true);
-    const shortId = id.slice(0, 6) + '…' + id.slice(-4);
-    setOnlineStatus(`
-      あなたの ID（コピーして相手に渡してください）:<br>
-      <input type="text" readonly value="${id}" id="hostIdField" style="width:100%;font-size:.75rem;padding:.4rem;margin:.4rem 0;border-radius:4px;border:1px solid #ccc;color:#333;" onclick="this.select()">
-      <button class="action-btn" onclick="copyHostId()" style="font-size:.85rem;">📋 IDをコピー</button>
-      <div style="margin-top:.6rem;font-size:.85rem;">相手の接続を待っています…</div>
-    `);
-    // ゲストからの接続を待つ
+    lobbyMembers = [{ name: name, isHost: true, peerId: null }];
+    hostConns = [];
     peer.on('connection', c => {
-      conn = c;
-      attachConnHandlers();
-      whenConnOpen(() => {
-        setOnlineStatus('相手が参加しました！ゲーム開始…');
-        startGame(2, { mode: 'online-host' });
-      });
+      whenSpecificConnOpen(c, () => { /* lobby-join 待ち */ });
+      c.on('data', data => handleDataFromGuest(c, data));
+      c.on('close', () => removeGuestFromLobby(c));
+      c.on('error', err => { console.error('Guest conn error:', err); });
     });
+    showLobbyAsHost(id);
   } catch (err) {
     setOnlineStatus('接続失敗: ' + (err.message || err));
   }
+}
+
+// 任意のconnのopenを待つ
+function whenSpecificConnOpen(c, cb) {
+  if (c.open) cb(); else c.on('open', cb);
+}
+
+// ホスト：ゲストから来たデータの一次処理
+function handleDataFromGuest(c, data) {
+  if (!data) return;
+  if (!state) {
+    if (data.type === 'lobby-join') {
+      if (lobbyMembers.length >= 4) {
+        try { c.send({ type: 'lobby-full' }); c.close(); } catch(e) {}
+        return;
+      }
+      const guestEntry = { conn: c, name: data.name, playerIdx: -1, ready: true, rematch: false };
+      hostConns.push(guestEntry);
+      lobbyMembers.push({ name: data.name, isHost: false, peerId: c.peer });
+      broadcastLobbyUpdate();
+      showLobbyAsHost(myPeerId);
+    }
+    return;
+  }
+  // ゲーム中のメッセージ
+  if (data.type === 'action') {
+    handleGuestAction(data.action, c);
+  } else if (data.type === 'win-approved') {
+    handleApproveResponse(c, true);
+  } else if (data.type === 'win-rejected') {
+    handleApproveResponse(c, false);
+  } else if (data.type === 'rematch-request') {
+    handleRematchRequest(c);
+  }
+}
+
+function removeGuestFromLobby(c) {
+  if (state) return;
+  hostConns = hostConns.filter(hc => hc.conn !== c);
+  lobbyMembers = lobbyMembers.filter(m => m.peerId !== c.peer);
+  broadcastLobbyUpdate();
+  showLobbyAsHost(myPeerId);
+}
+
+function broadcastLobbyUpdate() {
+  hostConns.forEach(hc => {
+    if (hc.conn && hc.conn.open) {
+      try { hc.conn.send({ type: 'lobby-update', members: lobbyMembers }); } catch(e) {}
+    }
+  });
+}
+
+function showLobbyAsHost(roomId) {
+  setOnlineStatus('');
+  document.getElementById('onlineMenu').style.display = 'none';
+  const lobby = document.getElementById('lobbyScreen');
+  lobby.style.display = 'block';
+  document.getElementById('lobbyTitle').textContent = '対 戦 ロ ビ ー（ホスト）';
+  const canStart = lobbyMembers.length >= 2 && lobbyMembers.length <= 4;
+  document.getElementById('lobbyContent').innerHTML = `
+    <div style="margin-bottom:.6rem;font-size:.85rem;opacity:.85;">あなたの ID（コピーして相手に渡してください）：</div>
+    <input type="text" readonly value="${roomId}" id="hostIdField" style="width:100%;font-size:.75rem;padding:.4rem;margin-bottom:.4rem;border-radius:4px;border:1px solid #ccc;color:#333;" onclick="this.select()">
+    <button class="action-btn" onclick="copyHostId()" style="font-size:.85rem;margin-bottom:.8rem;">📋 IDをコピー</button>
+    <div style="margin-top:.8rem;border-top:1px solid rgba(244,236,216,.2);padding-top:.8rem;">
+      <div style="font-size:.85rem;margin-bottom:.4rem;color:var(--gold);letter-spacing:.2em;">参 加 メ ン バ ー（${lobbyMembers.length} / 4）</div>
+      ${lobbyMembers.map(m => `
+        <div style="background:rgba(0,0,0,.3);padding:.5rem .8rem;margin-bottom:.3rem;border-radius:4px;font-size:.95rem;">
+          ${m.isHost?'👑 ':'👤 '}${m.name}
+        </div>
+      `).join('')}
+      ${lobbyMembers.length < 4 ? '<div style="font-size:.8rem;opacity:.7;margin-top:.4rem;">（最大4人まで参加可能）</div>' : ''}
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:.5rem;justify-content:center;">
+      <button class="action-btn" onclick="leaveLobby()">解 散</button>
+      <button class="action-btn primary" onclick="hostStartGame()" ${canStart?'':'disabled'}>このメンバーで開始（${lobbyMembers.length}人）</button>
+    </div>
+  `;
 }
 
 function copyHostId() {
@@ -1161,14 +1373,29 @@ function copyHostId() {
   if (!f) return;
   f.select();
   try { document.execCommand('copy'); alert('コピーしました'); }
-  catch(e) { /* clipboard API fallback */
+  catch(e) {
     if (navigator.clipboard) navigator.clipboard.writeText(f.value).then(()=>alert('コピーしました'));
   }
+}
+
+function hostStartGame() {
+  if (lobbyMembers.length < 2) return;
+  hostConns.forEach((hc, i) => { hc.playerIdx = i + 1; });
+  hostConns.forEach(hc => {
+    if (hc.conn && hc.conn.open) {
+      try { hc.conn.send({ type: 'game-start', myIdx: hc.playerIdx, totalPlayers: lobbyMembers.length, members: lobbyMembers }); } catch(e) {}
+    }
+  });
+  // ロビー画面を閉じる
+  document.getElementById('lobbyScreen').style.display = 'none';
+  startGame(lobbyMembers.length, { mode: 'online-host' });
 }
 
 // ───── ゲスト：参加フォーム ─────
 function showJoinForm() {
   setOnlineStatus(`
+    <div style="margin-bottom:.5rem;font-size:.9rem;">あなたの名前を入力：</div>
+    <input type="text" id="joinNameField" placeholder="名前" maxlength="12" style="width:100%;font-size:.95rem;padding:.5rem;border-radius:4px;border:1px solid #ccc;color:#333;margin-bottom:.5rem;" autocomplete="off">
     <div style="margin-bottom:.5rem;font-size:.9rem;">ホストから受け取ったIDを入力：</div>
     <input type="text" id="joinIdField" placeholder="ID を貼り付け" style="width:100%;font-size:.85rem;padding:.5rem;border-radius:4px;border:1px solid #ccc;color:#333;" autocomplete="off">
     <button class="action-btn primary" onclick="joinAsGuest()" style="margin-top:.6rem;">参加する</button>
@@ -1177,9 +1404,12 @@ function showJoinForm() {
 
 async function joinAsGuest() {
   const idField = document.getElementById('joinIdField');
+  const nameField = document.getElementById('joinNameField');
   if (!idField) return;
   const hostId = idField.value.trim();
+  const name = (nameField && nameField.value.trim()) || 'ゲスト';
   if (!hostId) { alert('IDを入力してください'); return; }
+  myGuestName = name;
   setOnlineStatus('ピアサーバーに接続中…');
   try {
     await setupPeer(false);
@@ -1190,23 +1420,56 @@ async function joinAsGuest() {
       return;
     }
     attachConnHandlers();
-    // 念のためタイムアウト（10秒で接続できなければ失敗扱い）
     let opened = false;
     const failTimer = setTimeout(() => {
       if (!opened) {
         setOnlineStatus('接続タイムアウト：ホストID が正しいか、ホストが起動中か確認してください');
       }
     }, 10000);
-
     whenConnOpen(() => {
       opened = true;
       clearTimeout(failTimer);
-      setOnlineStatus('接続成立！ゲーム開始を待っています…');
-      startGame(2, { mode: 'online-guest' });
+      conn.send({ type: 'lobby-join', name });
+      showLobbyAsGuest();
     });
   } catch (err) {
     setOnlineStatus('接続失敗: ' + (err.message || err));
   }
+}
+
+function showLobbyAsGuest() {
+  setOnlineStatus('');
+  document.getElementById('onlineMenu').style.display = 'none';
+  const lobby = document.getElementById('lobbyScreen');
+  lobby.style.display = 'block';
+  document.getElementById('lobbyTitle').textContent = '対 戦 ロ ビ ー（ゲスト）';
+  renderGuestLobby();
+}
+
+function renderGuestLobby() {
+  const content = document.getElementById('lobbyContent');
+  if (!content) return;
+  content.innerHTML = `
+    <div style="margin-top:.4rem;border-top:1px solid rgba(244,236,216,.2);padding-top:.8rem;">
+      <div style="font-size:.85rem;margin-bottom:.4rem;color:var(--gold);letter-spacing:.2em;">参 加 メ ン バ ー</div>
+      <div>${
+        lobbyMembers.length === 0 ? '<div style="font-size:.85rem;opacity:.7;">参加情報を取得中…</div>' :
+        lobbyMembers.map(m => `
+          <div style="background:rgba(0,0,0,.3);padding:.5rem .8rem;margin-bottom:.3rem;border-radius:4px;font-size:.95rem;">
+            ${m.isHost?'👑 ':'👤 '}${m.name}
+          </div>
+        `).join('')
+      }</div>
+      <div style="font-size:.85rem;opacity:.75;margin-top:1rem;text-align:center;">ホストが「開始」を押すまでお待ちください…</div>
+    </div>
+    <div style="margin-top:1rem;display:flex;justify-content:center;">
+      <button class="action-btn" onclick="leaveLobby()">退出</button>
+    </div>
+  `;
+}
+
+function leaveLobby() {
+  returnToTitle();
 }
 
 function showOnlineMenu() {
@@ -1219,8 +1482,9 @@ function hideOnlineMenu() {
   const m = document.getElementById('modeMenu');
   if (m) m.style.display = '';
   setOnlineStatus('');
-  if (peer && !state) { try { peer.destroy(); } catch(e){} peer = null; conn = null; }
+  if (peer && !state) { try { peer.destroy(); } catch(e){} peer = null; conn = null; hostConns = []; }
 }
+
 
 // ───── 山を作成（120個） ─────
 function buildWall() {
@@ -1246,14 +1510,12 @@ function startCpuGame() {
 function startGame(numPlayers, opts) {
   opts = opts || { mode: 'cpu' };
 
-  // ホスト/ゲスト両方とも同じ初期化を想定するが、ゲストは serverState を待つだけ
   if (opts.mode === 'online-guest') {
-    // ゲストはホストからのstate送信を待つ。画面遷移だけ先に行う
     state = null;
+    document.getElementById('lobbyScreen').style.display = 'none';
     document.getElementById('titleScreen').style.display = 'none';
     document.getElementById('gameScreen').classList.add('active');
     document.getElementById('logBox').style.display = 'block';
-    // 簡易状態表示（state受信前）
     const hint = document.getElementById('hintText');
     if (hint) hint.textContent = 'ホストからのゲーム状態を受信中…';
     return;
@@ -1263,11 +1525,14 @@ function startGame(numPlayers, opts) {
 
   const players = [];
   if (opts.mode === 'online-host') {
-    // 2人オンライン：プレイヤー0=ホスト(自分)、プレイヤー1=ゲスト
-    players.push({ idx:0, name:'あなた（ホスト）', isCPU:false, hand:[], melds:[], drawn:null });
-    players.push({ idx:1, name:'相手',           isCPU:false, hand:[], melds:[], drawn:null });
+    // ホスト + ゲスト1〜3人
+    // lobbyMembers から各プレイヤーの名前を取得
+    lobbyMembers.forEach((m, i) => {
+      const displayName = (i === 0) ? `あなた（${m.name}）` : m.name;
+      players.push({ idx:i, name:displayName, isCPU:false, hand:[], melds:[], drawn:null });
+    });
   } else {
-    // CPU対戦：プレイヤー0=自分、残りはCPU
+    // CPU対戦
     players.push({ idx:0, name:'あなた', isCPU:false, hand:[], melds:[], drawn:null });
     for (let i = 1; i < numPlayers; i++) {
       players.push({ idx:i, name:CPU_NAMES[i-1], isCPU:true, hand:[], melds:[], drawn:null });
@@ -1294,24 +1559,23 @@ function startGame(numPlayers, opts) {
     selectedTileId: null,
     awaitingPonResponse: false,
     lastDrawnId: null,
-    mode: opts.mode,           // 'cpu' | 'online-host' | 'online-guest'
-    myIdx: 0                   // 自分のプレイヤーインデックス（ホストは0、ゲストは1）
+    mode: opts.mode,
+    myIdx: 0
   };
 
   document.getElementById('titleScreen').style.display = 'none';
+  document.getElementById('lobbyScreen').style.display = 'none';
   document.getElementById('gameScreen').classList.add('active');
   document.getElementById('logBox').style.display = 'block';
 
   log('ゲーム開始 ── '+(opts.mode==='online-host'?'友人対戦':numPlayers+'人プレイ'));
-  log((opts.mode==='online-host'?'あなた（ホスト）':'あなた') + 'が親です');
+  log((opts.mode==='online-host'?players[0].name:'あなた') + 'が親です');
   render();
 
-  // オンラインホスト：ゲストに初期stateを送信
   if (opts.mode === 'online-host') {
     broadcastState();
   }
 
-  // 親（プレイヤー0）からスタート → すぐツモ
   doDraw(0);
 }
 
@@ -1360,9 +1624,7 @@ function renderLog() {
 function doDraw(playerIdx) {
   if (state.wall.length === 0) {
     // 流局
-    if (isHost() && conn && conn.open) {
-      conn.send({ type: 'draw' });
-    }
+    if (isHost()) hostBroadcast({ type: 'draw' });
     showDrawScreen();
     return;
   }
@@ -1586,8 +1848,8 @@ const DRAG = {
   pressStartTime: 0
 };
 
-const PRESS_HOLD_MS = 75;        // 長押し成立時間
-const TAP_TOLERANCE_PX = 8;      // タップとみなせる移動距離
+const PRESS_HOLD_MS = 150;       // 長押し成立時間（pre-drag開始）
+const TAP_TOLERANCE_PX = 8;      // タップとみなせる最大移動距離
 const DRAG_BEGIN_PX = 4;         // pre-drag→本ドラッグへの距離閾値
 
 function attachTileHandlers() {
@@ -1599,7 +1861,27 @@ function attachTileHandlers() {
 }
 
 function onTilePointerDown(e) {
-  if (DRAG.state !== 'idle') return;
+  // 前回のタップが何らかの理由で idle に戻っていなければ強制リセット
+  if (DRAG.state !== 'idle') {
+    // 既存リスナーを念のため除去
+    window.removeEventListener('pointermove', onTilePointerMove);
+    window.removeEventListener('pointerup', onTilePointerUp);
+    window.removeEventListener('pointercancel', onTilePointerUp);
+    clearTimeout(DRAG.pressTimer);
+    // ドラッグ用要素・placeholder の片付け
+    const oldTile = DRAG.tile;
+    const oldPh = DRAG.placeholder;
+    if (oldTile && oldTile.classList.contains('dragging') && oldTile.parentNode === document.body) {
+      oldTile.parentNode.removeChild(oldTile);
+    } else if (oldTile) {
+      oldTile.classList.remove('pre-drag', 'dragging');
+    }
+    if (oldPh && oldPh.parentNode) oldPh.parentNode.removeChild(oldPh);
+    DRAG.state = 'idle';
+    DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
+    // この pointerdown 自体は破棄せず、下に進ませる
+  }
+
   // マウスは左ボタンのみ
   if (e.pointerType === 'mouse' && e.button !== 0) return;
 
@@ -1645,9 +1927,10 @@ function onTilePointerMove(e) {
   DRAG.movedDistance = Math.max(DRAG.movedDistance, dist);
 
   if (DRAG.state === 'pressing') {
+    // 大きく動いたら長押し成立タイマーをキャンセル（ドラッグは開始しない）
+    // → このまま離せばタップ判定はTAP_TOLERANCE_PXで弾かれる
     if (dist > TAP_TOLERANCE_PX) {
       clearTimeout(DRAG.pressTimer);
-      DRAG.state = 'cancelled';
     }
     return;
   }
@@ -1882,29 +2165,25 @@ function onTilePointerUp(e) {
   const wasState = DRAG.state;
   const tappedId = DRAG.tileId;
   const movedDist = DRAG.movedDistance;
-  const elapsed = Date.now() - DRAG.pressStartTime;
 
-  if (wasState === 'pressing' && movedDist <= TAP_TOLERANCE_PX && elapsed < PRESS_HOLD_MS) {
-    DRAG.state = 'idle';
-    DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
-    selectTile(tappedId);
-    return;
-  }
-
-  if (wasState === 'pre-drag') {
-    DRAG.tile.classList.remove('pre-drag');
-    DRAG.state = 'idle';
-    DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
-    return;
-  }
-
+  // dragging 中だった場合は finishDrag に処理を委ねる（DRAG.* はそのまま渡す）
   if (wasState === 'dragging') {
     finishDrag();
     return;
   }
 
+  // pressing or pre-drag で離した場合
+  // pre-drag のハイライトを除去
+  if (DRAG.tile) DRAG.tile.classList.remove('pre-drag');
+
+  // 状態リセット
   DRAG.state = 'idle';
   DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
+
+  // 移動が少なければ → タップとして処理
+  if (movedDist <= TAP_TOLERANCE_PX) {
+    selectTile(tappedId);
+  }
 }
 
 function finishDrag() {
@@ -2167,11 +2446,10 @@ function confirmPonFinal() {
 }
 
 // ホスト権威：ポン処理本体
-function hostExecutePon(arrangement) {
-  // ポンを実行するプレイヤー = 直前の捨て牌の "by 以外"。
-  // 2人対戦なので、捨てた人と異なる方
-  const ponBy = state.players.findIndex((p, i) => i !== state.lastDiscard.by);
-  const ponPlayer = state.players[ponBy];
+function hostExecutePon(arrangement, ponByIdx) {
+  // ポンを実行するプレイヤーが指定されていない場合は、ホスト自身が呼び出した想定
+  if (ponByIdx === undefined || ponByIdx === null) ponByIdx = state.myIdx;
+  const ponPlayer = state.players[ponByIdx];
 
   // 手牌から「捨て牌以外」を取り出し、捨て牌は state.discards から取得
   const orderedTiles = arrangement.map(a => {
@@ -2180,22 +2458,22 @@ function hostExecutePon(arrangement) {
       return taken.tile;
     } else {
       const idx = ponPlayer.hand.findIndex(t => t.id === a.id);
+      if (idx < 0) {
+        // 万一見つからなければスキップ（データ不整合）
+        return null;
+      }
       return ponPlayer.hand.splice(idx, 1)[0];
     }
-  });
+  }).filter(Boolean);
 
   state.lastDiscard = null;
   ponPlayer.melds.push({ type: 'pon', tiles: orderedTiles });
   log(`${ponPlayer.name} 「ポン！」`, true);
 
-  // 全クライアントに「ポン」バナーを表示してもらう
-  if (isHost() && conn && conn.open) {
-    conn.send({ type: 'declaration', text: 'ポ ン' });
-  }
+  if (isHost()) hostBroadcast({ type: 'declaration', text: 'ポ ン' });
   showDeclaration('ポ ン');
 
-  // ポン後は ponPlayer の番（手牌から1枚捨てる）
-  state.turn = ponBy;
+  state.turn = ponByIdx;
   state.phase = 'discard';
   state.selectedTileId = null;
 
@@ -2205,7 +2483,7 @@ function hostExecutePon(arrangement) {
 
 function executePon(arrangement) {
   // 互換性: CPUモードの古いコードからの呼び出しに備える
-  hostExecutePon(arrangement);
+  hostExecutePon(arrangement, state.myIdx);
 }
 
 // ───── プレイヤーがロン宣言 ─────
@@ -2224,10 +2502,14 @@ function passClaim() {
     sendActionToHost({ type: 'pass' });
     return;
   }
-  hostPassClaim();
+  hostPassClaim(state.myIdx);
 }
 
-function hostPassClaim() {
+function hostPassClaim(fromIdx) {
+  // 複数人モードでは「全員からのパス確認」が本当は必要だが、
+  // 簡易実装として「最初にパスした人 or 最後にパスした人」が来た時点で次に進める。
+  // 友人対戦：lastDiscardをクリアして次のプレイヤーへ。
+  // 全員がパスする前に誰かがポンを宣言すると、その時点でphaseが変わるのでパスは無効になる。
   state.lastDiscard = null;
   state.phase = 'discard';
   if (isHost()) broadcastState();
@@ -2426,7 +2708,6 @@ function confirmWin(kind, ronTileId) {
 
 function finalizeWin(kind, ronTileId) {
   closeModal();
-  // 上がりプレイヤー（自分）の言葉リストを生成
   const me = getMe();
   const meldWords = me.melds.map(m => m.tiles.map(t=>t.c).join(''));
   const builderWords = winBuilder.groups.map(g => g.tiles.map(t=>t.c).join(''));
@@ -2438,41 +2719,75 @@ function finalizeWin(kind, ronTileId) {
     return;
   }
 
-  // 友人対戦：相手の承認を求める
+  // 友人対戦：相手全員の承認を求める
   if (isGuest()) {
-    // ゲストが上がる側 → ホストに申請を送信、自分は待機画面
     sendActionToHost({ type: 'win-claim', kind, playerIdx: state.myIdx, words: allWords });
-    showWinPendingScreen(allWords, true);
+    showWinPendingScreen(allWords);
     return;
   }
-  // ホストが上がる側 → ゲストに承認モーダル送信、自分は待機画面
-  if (conn && conn.open) {
-    conn.send({ type: 'win-pending', kind, playerIdx: state.myIdx, words: allWords });
-  }
-  showWinPendingScreen(allWords, true);
-  // 承認待ちのフラグを立てる
-  window._pendingWin = { kind, playerIdx: state.myIdx, words: allWords };
+  // ホストが上がる側
+  startApprovalFlow(kind, state.myIdx, allWords);
 }
 
-// 上がりを宣言した人（A）が見る待機画面
-function showWinPendingScreen(words, isYouTheClaimer) {
+// ホスト：承認フロー開始（誰が上がろうと、ホストが集計の中心）
+function startApprovalFlow(kind, claimerIdx, words) {
+  // 承認が必要な人数 = 全員 - 1（上がる人本人を除く）
+  const needCount = state.players.length - 1;
+  window._pendingWin = {
+    kind, claimerIdx, words,
+    approvedSet: new Set(),     // 承認済みプレイヤーIdx
+    rejected: false,
+    needCount
+  };
+  // 上がる人が自分でない他の全員に承認モーダルを送信
+  state.players.forEach((p, i) => {
+    if (i === claimerIdx) return;
+    if (i === state.myIdx) {
+      // ホスト自身が承認する側 → ローカルでモーダル表示
+      showWinApprovalModal(kind, claimerIdx, words);
+    } else {
+      // ゲストに送信
+      hostSendTo(i, { type: 'win-pending', kind, playerIdx: claimerIdx, words });
+    }
+  });
+  // 上がる人本人 → 待機画面
+  if (claimerIdx === state.myIdx) {
+    showWinPendingScreen(words);
+  } else {
+    // 上がりを宣言したのはゲスト → そのゲストに「申請受付済み」通知
+    hostSendTo(claimerIdx, { type: 'win-claimer-pending', words });
+  }
+}
+
+// 上がりを宣言した人が見る待機画面
+function showWinPendingScreen(words) {
   let html = `
     <div style="text-align:center;">
       <h2>上 が り 申 請 中</h2>
       <p style="margin-bottom:.8rem;">
         以下の構成で上がりを申請しました。<br>
-        <strong>相手の承認を待っています…</strong>
+        <strong>他のプレイヤー全員の承認を待っています…</strong>
       </p>
       <div style="background:#f9f4e3;padding:1rem;border-radius:6px;margin:1rem 0;text-align:center;">
         ${words.map(w => `<span class="word-display">${w}</span>`).join('')}
       </div>
-      <div style="font-size:.85rem;color:#888;">相手が「認める」or「却下」を選択中</div>
+      <div style="font-size:.85rem;color:#888;" id="approvalProgress">承認状況：集計中…</div>
     </div>
   `;
   showModalWithHTML(html);
 }
 
-// 上がりを承認するか判断する側（B）が見るモーダル
+// 承認状況を更新（ホスト用）
+function updateApprovalProgress() {
+  const pw = window._pendingWin;
+  if (!pw) return;
+  const progress = document.getElementById('approvalProgress');
+  if (progress) {
+    progress.textContent = `承認状況：${pw.approvedSet.size} / ${pw.needCount} 人`;
+  }
+}
+
+// 上がりを承認するか判断する側が見るモーダル
 function showWinApprovalModal(kind, playerIdx, words) {
   const claimer = state.players[playerIdx];
   let html = `
@@ -2495,50 +2810,118 @@ function showWinApprovalModal(kind, playerIdx, words) {
   showModalWithHTML(html);
 }
 
-// B側：承認した
+// 承認した
 function approveWinApproval() {
   closeModal();
   if (isGuest()) {
     sendActionToHost({ type: 'win-approved' });
+    // ゲストは待機画面に切り替え
+    showWaitingForOthersScreen('approved');
   } else {
-    // ホストB（=ホストが承認する側）：ゲスト(A)から申請が来ていた場合
-    // 注：実際にはホストが承認する側になることはこの設計ではないが、念のため
-    if (window._pendingApproval) {
-      const pa = window._pendingApproval;
-      hostFinalizeWin(pa.kind, pa.playerIdx, pa.words);
-      window._pendingApproval = null;
-    }
+    // ホスト自身が承認 → ローカル集計
+    handleApproveResponse(null, true, state.myIdx);
   }
 }
 
-// B側：却下した
+// 却下した
 function rejectWinApproval() {
   closeModal();
   if (isGuest()) {
     sendActionToHost({ type: 'win-rejected' });
+    showWaitingForOthersScreen('rejected');
   } else {
-    if (window._pendingApproval) {
-      window._pendingApproval = null;
-      log('上がりは却下されました（チョンボ扱い）。ゲーム続行', true);
-      // ゲーム続行：状態は変更不要、ただし上がりを宣言した側（ゲスト）にも却下を通知
-      if (conn && conn.open) {
-        conn.send({ type: 'win-rejected-notice' });
-      }
-    }
+    handleApproveResponse(null, false, state.myIdx);
+  }
+}
+
+function showWaitingForOthersScreen(myChoice) {
+  const msg = myChoice === 'approved' ? '「認める」を選択しました。' : '「却下」を選択しました。';
+  let html = `
+    <div style="text-align:center;">
+      <h2>応 答 受 付</h2>
+      <p style="margin-bottom:.8rem;">${msg}<br>他のプレイヤーの応答を待っています…</p>
+    </div>
+  `;
+  showModalWithHTML(html);
+}
+
+// ホスト：承認応答を受け取った（ゲストからのconn 또는 ホスト自身）
+function handleApproveResponse(c, approved, fromIdx) {
+  const pw = window._pendingWin;
+  if (!pw) return;
+  // 送信元のプレイヤーIdxを決定
+  let idx = fromIdx;
+  if (idx === undefined && c) {
+    const hc = hostConns.find(h => h.conn === c);
+    if (hc) idx = hc.playerIdx;
+  }
+  if (idx === undefined) return;
+  if (idx === pw.claimerIdx) return; // 上がる本人は無視
+
+  if (!approved) {
+    // 1人でも却下 → チョンボ扱い、全員に通知
+    pw.rejected = true;
+    window._pendingWin = null;
+    // 全プレイヤーに却下通知（モーダルを閉じてゲーム続行）
+    hostBroadcast({ type: 'win-rejected-notice' });
+    closeModal();
+    log('上がりは却下されました（チョンボ扱い）。ゲーム続行', true);
+    broadcastState();
+    render();
+    return;
+  }
+
+  pw.approvedSet.add(idx);
+  // 進捗を全員に通知
+  hostBroadcast({ type: 'approval-progress', approved: pw.approvedSet.size, need: pw.needCount });
+  updateApprovalProgress();
+
+  // 全員承認チェック
+  if (pw.approvedSet.size >= pw.needCount) {
+    // 和了成立
+    const { kind, claimerIdx, words } = pw;
+    window._pendingWin = null;
+    hostFinalizeWin(kind, claimerIdx, words);
   }
 }
 
 function hostFinalizeWin(kind, playerIdx, words) {
-  // 全クライアントに「ツモ/ロン」バナー表示と上がり画面を見せる
-  if (isHost() && conn && conn.open) {
-    conn.send({ type: 'declaration', text: kind === 'tsumo' ? 'ツ モ' : 'ロ ン' });
-    conn.send({ type: 'win', playerIdx, kind, words });
+  // 全クライアントに「ツモ/ロン」バナー表示と振り返り画面を見せる
+  if (isHost()) {
+    hostBroadcast({ type: 'declaration', text: kind === 'tsumo' ? 'ツ モ' : 'ロ ン' });
+    // 全プレイヤーの最終手牌を含めた振り返りデータを作成
+    const reviewData = buildReviewData(playerIdx, kind, words);
+    hostBroadcast({ type: 'win-review', reviewData });
   }
   showDeclaration(kind === 'tsumo' ? 'ツ モ' : 'ロ ン');
-  setTimeout(() => showWinScreenWithWords(playerIdx, kind, words), 1200);
+  setTimeout(() => {
+    if (isOnline()) {
+      const reviewData = buildReviewData(playerIdx, kind, words);
+      showReviewScreen(reviewData);
+    } else {
+      showWinScreenWithWords(playerIdx, kind, words);
+    }
+  }, 1200);
 }
 
-// 受信側用：ホストから送られてきた上がり情報で上がり画面を表示
+// 振り返り用データ構築（全プレイヤーの手牌・メルド情報を集約）
+function buildReviewData(winnerIdx, kind, winnerWords) {
+  return {
+    winnerIdx,
+    kind,
+    winnerWords,
+    players: state.players.map((p, i) => ({
+      name: p.name,
+      isWinner: i === winnerIdx,
+      melds: p.melds.map(m => m.tiles.map(t => ({ id: t.id, c: t.c }))),
+      hand: p.hand.map(t => ({ id: t.id, c: t.c, slotId: t.slotId || 'pool' })),
+      drawn: p.drawn ? { id: p.drawn.id, c: p.drawn.c } : null
+    })),
+    totalPlayers: state.players.length
+  };
+}
+
+// 受信側用：ホストから送られてきた振り返りデータで画面表示
 function showRemoteWinScreen(playerIdx, kind, words) {
   setTimeout(() => showWinScreenWithWords(playerIdx, kind, words), 1200);
 }
@@ -2660,17 +3043,137 @@ function showWinScreenWithWords(playerIdx, kind, words) {
   showModalWithHTML(html);
 }
 
+// ───── 振り返り画面（友人対戦の上がり後、全プレイヤーの手牌可視化） ─────
+function showReviewScreen(reviewData) {
+  // 各プレイヤーのスロット構成を表示
+  // メルド数によりスロット数が変わる：need3 = 4 - melds, need2 = 1
+  let html = `
+    <div class="win-screen" style="text-align:left;">
+      <h2 style="text-align:center;">${reviewData.kind === 'tsumo' ? 'ツ モ' : 'ロ ン'} 上 が り ！</h2>
+      <div style="text-align:center;margin-bottom:1rem;">
+        <div class="winner-name" style="font-size:1.4rem;">${reviewData.players[reviewData.winnerIdx].name} の勝利</div>
+      </div>
+      <div style="font-size:.9rem;color:#666;text-align:center;letter-spacing:.15em;margin-bottom:.8rem;">━ 全 員 の 手 牌 振 り 返 り ━</div>
+  `;
+  reviewData.players.forEach((p, i) => {
+    const isWinner = (i === reviewData.winnerIdx);
+    // メルド表示
+    let meldsHtml = '';
+    if (p.melds && p.melds.length > 0) {
+      meldsHtml = `
+        <div class="review-section-label">ポン公開牌</div>
+        <div class="review-tile-row">
+          ${p.melds.map(m => `
+            <div class="review-group meld">
+              ${m.map(t => `<div class="tile med">${t.c}</div>`).join('')}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // 手牌をslotIdごとにグルーピング
+    const groupOrder = ['g0','g1','g2','g3','g4'];
+    const tilesBySlot = {};
+    groupOrder.forEach(s => tilesBySlot[s] = []);
+    const poolTiles = [];
+    p.hand.forEach(t => {
+      const sid = t.slotId || 'pool';
+      if (groupOrder.includes(sid)) {
+        tilesBySlot[sid].push(t);
+      } else {
+        poolTiles.push(t);
+      }
+    });
+
+    // メルド数に応じて表示するスロット数を決定
+    const need3 = 4 - (p.melds ? p.melds.length : 0);
+    const slotsToShow = [];
+    for (let k = 0; k < need3; k++) slotsToShow.push({ id: `g${k}`, cap: 3 });
+    slotsToShow.push({ id: 'g4', cap: 2 });
+
+    let slotsHtml = '';
+    if (slotsToShow.length > 0) {
+      slotsHtml = `
+        <div class="review-section-label">スロット振り分け（${need3}×3 + 1×2）</div>
+        <div class="review-tile-row">
+          ${slotsToShow.map(s => {
+            const tiles = tilesBySlot[s.id] || [];
+            const empty = Math.max(0, s.cap - tiles.length);
+            return `
+              <div class="review-group">
+                ${tiles.map(t => `<div class="tile med">${t.c}</div>`).join('')}
+                ${Array(empty).fill(0).map(()=>'<div class="review-empty-slot"></div>').join('')}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    // 余剰牌
+    let poolHtml = '';
+    if (poolTiles.length > 0) {
+      poolHtml = `
+        <div class="review-section-label">余剰牌</div>
+        <div class="review-tile-row">
+          ${poolTiles.map(t => `<div class="tile med">${t.c}</div>`).join('')}
+        </div>
+      `;
+    } else if (slotsToShow.length === 0 && (!p.melds || p.melds.length === 0)) {
+      poolHtml = `<div style="font-size:.85rem;color:#888;">手牌なし</div>`;
+    }
+
+    html += `
+      <div class="review-player${isWinner?' winner':''}">
+        <div class="review-player-header">
+          ${p.name}
+          ${isWinner ? '<span class="review-winner-badge">勝 者</span>' : ''}
+        </div>
+        ${meldsHtml}
+        ${slotsHtml}
+        ${poolHtml}
+      </div>
+    `;
+  });
+
+  html += `
+      <div class="modal-actions" style="justify-content:center;margin-top:.8rem;">
+        <button class="action-btn" onclick="returnToTitle()">終 了</button>
+        <button class="action-btn primary" id="rematchBtn" onclick="requestRematch()">再 戦</button>
+      </div>
+      <div class="review-rematch-status" id="rematchStatus"></div>
+    </div>
+  `;
+
+  showModalWithHTMLClass(html, 'review-modal');
+  // 再戦データを保持（再戦時の再レンダー用）
+  window._lastReviewData = reviewData;
+  window._myRematchClicked = false;
+}
+
+// クラス指定可能なモーダル表示
+function showModalWithHTMLClass(html, modalClass) {
+  const modalContent = document.getElementById('modalContent');
+  modalContent.className = 'modal' + (modalClass ? ' ' + modalClass : '');
+  modalContent.innerHTML = html;
+  document.getElementById('modal').classList.add('show');
+}
+
 // ───── 流局 ─────
 function showDrawScreen() {
+  // オンラインの場合：再戦ボタン、CPUの場合：もう一度ボタン
+  const isOnlineGame = isOnline();
   const html = `
     <div class="draw-screen">
       <h2>流  局</h2>
       <div class="stamp">荒 牌</div>
       <p>山牌が尽きました。誰も上がれませんでした。</p>
       <div class="modal-actions" style="justify-content:center;">
-        <button class="action-btn" onclick="returnToTitle()">タイトルへ</button>
-        <button class="action-btn primary" onclick="restartGame()">もう一度</button>
+        <button class="action-btn" onclick="returnToTitle()">${isOnlineGame ? '終 了' : 'タイトルへ'}</button>
+        <button class="action-btn primary" id="rematchBtn" onclick="${isOnlineGame ? 'requestRematch()' : 'restartGame()'}">${isOnlineGame ? '再 戦' : 'もう一度'}</button>
       </div>
+      ${isOnlineGame ? '<div class="review-rematch-status" id="rematchStatus"></div>' : ''}
     </div>
   `;
   showModalWithHTML(html);
@@ -2777,25 +3280,100 @@ function returnToTitle() {
   closeModal();
   state = null;
   document.getElementById('gameScreen').classList.remove('active');
+  document.getElementById('lobbyScreen').style.display = 'none';
   document.getElementById('titleScreen').style.display = 'flex';
   document.getElementById('logBox').style.display = 'none';
   document.getElementById('logBox').innerHTML = '';
-  // PeerJS接続を解除
+  // PeerJS接続を全解除
+  hostConns.forEach(hc => {
+    if (hc.conn) { try { hc.conn.close(); } catch(e){} }
+  });
+  hostConns = [];
+  lobbyMembers = [];
   if (conn) { try { conn.close(); } catch(e){} conn = null; }
   if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
+  window._guestMyIdx = null;
+  window._guestMembers = null;
+  window._pendingWin = null;
+  window._rematchSet = null;
   hideOnlineMenu();
 }
 
 function restartGame() {
   closeModal();
   document.getElementById('logBox').innerHTML = '';
-  // オンラインモードでは再戦が複雑になるため、タイトルへ戻すのみとする
+  // オンラインモードでは requestRematch を使うので呼ばれない想定
   if (state && (state.mode === 'online-host' || state.mode === 'online-guest')) {
     returnToTitle();
     return;
   }
   state = null;
   startCpuGame();
+}
+
+// ───── 友人対戦：再戦リクエスト ─────
+function requestRematch() {
+  if (!isOnline()) {
+    restartGame();
+    return;
+  }
+  const btn = document.getElementById('rematchBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '再戦リクエスト送信済み'; }
+  window._myRematchClicked = true;
+
+  if (isGuest()) {
+    sendActionToHost({ type: 'rematch-request' });
+    updateRematchProgress({ from: state.myIdx, requested: 1, need: state.players.length });
+  } else {
+    // ホスト自身が再戦を希望
+    handleRematchRequest(null, state.myIdx);
+  }
+}
+
+// ホスト：再戦リクエストを受信
+function handleRematchRequest(c, fromIdx) {
+  if (!isHost()) return;
+  let idx = fromIdx;
+  if (idx === undefined && c) {
+    const hc = hostConns.find(h => h.conn === c);
+    if (hc) idx = hc.playerIdx;
+  }
+  if (idx === undefined) return;
+  if (!window._rematchSet) window._rematchSet = new Set();
+  window._rematchSet.add(idx);
+
+  const need = state.players.length;
+  const requested = window._rematchSet.size;
+
+  // 全員に進捗通知
+  hostBroadcast({ type: 'rematch-progress', requested, need });
+  updateRematchProgress({ requested, need });
+
+  if (requested >= need) {
+    // 全員再戦希望 → 新ゲーム開始
+    window._rematchSet = null;
+    hostStartRematch();
+  }
+}
+
+function updateRematchProgress(data) {
+  const status = document.getElementById('rematchStatus');
+  if (status) {
+    status.textContent = `再戦リクエスト：${data.requested} / ${data.need} 人`;
+  }
+}
+
+function hostStartRematch() {
+  // 各ゲストに rematch-start を送る
+  hostConns.forEach(hc => {
+    if (hc.conn && hc.conn.open) {
+      try { hc.conn.send({ type: 'rematch-start', myIdx: hc.playerIdx }); } catch(e) {}
+    }
+  });
+  closeModal();
+  document.getElementById('logBox').innerHTML = '';
+  state = null;
+  startGame(lobbyMembers.length, { mode: 'online-host' });
 }
 
 </script>
