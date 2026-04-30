@@ -1075,12 +1075,20 @@ function setupPeer(asHost) {
       if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
       if (conn) { try { conn.close(); } catch(e){} conn = null; }
       peer = new Peer({ debug: 1 });
+      let resolved = false;
       peer.on('open', id => {
         myPeerId = id;
+        resolved = true;
         resolve(id);
       });
       peer.on('error', err => {
-        reject(err);
+        console.error('Peer error:', err);
+        if (!resolved) {
+          reject(err);
+        } else {
+          // 接続後のエラーは画面に表示
+          setOnlineStatus('PeerJSエラー: ' + (err.type || err.message || err));
+        }
       });
     } catch (err) {
       reject(err);
@@ -1089,14 +1097,11 @@ function setupPeer(asHost) {
 }
 
 function attachConnHandlers() {
-  conn.on('open', () => {
-    setOnlineStatus('接続成立！');
-  });
   conn.on('data', data => {
     if (isHost()) {
-      if (data.type === 'action') handleGuestAction(data.action);
+      if (data && data.type === 'action') handleGuestAction(data.action);
     } else {
-      handleHostMessage(data);
+      if (data) handleHostMessage(data);
     }
   });
   conn.on('close', () => {
@@ -1105,7 +1110,19 @@ function attachConnHandlers() {
   });
   conn.on('error', err => {
     console.error('Conn error:', err);
+    setOnlineStatus('接続エラー: ' + (err.message || err));
   });
+}
+
+// conn.on('open') の登録漏れを防ぐヘルパー（既に開いていれば即実行）
+function whenConnOpen(callback) {
+  if (!conn) return;
+  if (conn.open) {
+    // 既に open している → すぐ実行
+    callback();
+  } else {
+    conn.on('open', callback);
+  }
 }
 
 function setOnlineStatus(msg) {
@@ -1129,7 +1146,7 @@ async function hostStartOnline() {
     peer.on('connection', c => {
       conn = c;
       attachConnHandlers();
-      conn.on('open', () => {
+      whenConnOpen(() => {
         setOnlineStatus('相手が参加しました！ゲーム開始…');
         startGame(2, { mode: 'online-host' });
       });
@@ -1167,11 +1184,24 @@ async function joinAsGuest() {
   try {
     await setupPeer(false);
     setOnlineStatus('ホストに接続中…');
-    conn = peer.connect(hostId, { reliable: true });
+    conn = peer.connect(hostId);
+    if (!conn) {
+      setOnlineStatus('接続失敗：connectが返ってきませんでした');
+      return;
+    }
     attachConnHandlers();
-    conn.on('open', () => {
+    // 念のためタイムアウト（10秒で接続できなければ失敗扱い）
+    let opened = false;
+    const failTimer = setTimeout(() => {
+      if (!opened) {
+        setOnlineStatus('接続タイムアウト：ホストID が正しいか、ホストが起動中か確認してください');
+      }
+    }, 10000);
+
+    whenConnOpen(() => {
+      opened = true;
+      clearTimeout(failTimer);
       setOnlineStatus('接続成立！ゲーム開始を待っています…');
-      // ゲストはstate送信を待つ
       startGame(2, { mode: 'online-guest' });
     });
   } catch (err) {
