@@ -1532,6 +1532,10 @@ function renderLog() {
 }
 
 function doDraw(playerIdx) {
+  // 新しいターン開始 → パス関連状態をクリア
+  window._iPassed = false;
+  if (state) state.passSet = null;
+
   if (state.wall.length === 0) {
     if (isHost()) hostBroadcast({ type: 'draw' });
     showDrawScreen();
@@ -1656,19 +1660,41 @@ function renderActions() {
   const me = getMe();
 
   if (state.phase === 'awaiting-claim') {
+    // 捨てた本人にはアクションを見せない
     if (state.lastDiscard && state.lastDiscard.by === state.myIdx) {
       div.innerHTML = '';
-      document.getElementById('hintText').textContent = `あなたが「${state.lastDiscard.tile.c}」を捨てました。相手の応答待ち…`;
+      const passCount = (state.passSet || []).length;
+      const needPass = state.players.length - 1;
+      const passNote = (state.mode === 'online-host' || state.mode === 'online-guest')
+        ? `（パス: ${passCount} / ${needPass} 人）` : '';
+      document.getElementById('hintText').textContent = `あなたが「${state.lastDiscard.tile.c}」を捨てました。相手の応答待ち…${passNote}`;
       return;
     }
     const lastTile = state.lastDiscard.tile;
+    // 自分が既にパス済みかどうかチェック
+    const passSet = state.passSet || [];
+    const iAlreadyPassed = passSet.includes(state.myIdx) || window._iPassed;
+    if (iAlreadyPassed) {
+      div.innerHTML = `<button class="action-btn" disabled>パ ス 済 み</button>`;
+      const passCount = passSet.length;
+      const needPass = state.players.length - 1;
+      const passNote = (state.mode === 'online-host' || state.mode === 'online-guest')
+        ? `　（パス: ${passCount} / ${needPass} 人）` : '';
+      document.getElementById('hintText').textContent =
+        `あなたはパス済みです。他のプレイヤーの応答を待っています…${passNote}`;
+      return;
+    }
     div.innerHTML = `
       <button class="action-btn primary" onclick="declarePon()">ポ ン</button>
       <button class="action-btn danger" onclick="declareRon()">ロ ン  上 が り</button>
       <button class="action-btn" onclick="passClaim()">パ ス</button>
     `;
+    const passCount = passSet.length;
+    const needPass = state.players.length - 1;
+    const passNote = (state.mode === 'online-host' || state.mode === 'online-guest')
+      ? `　（パス: ${passCount} / ${needPass} 人）` : '';
     document.getElementById('hintText').textContent =
-      `${state.lastDiscard.byName} が「${lastTile.c}」を捨てました。ポン（捨て牌＋手牌2枚で3文字を作る） / ロン / パス`;
+      `${state.lastDiscard.byName} が「${lastTile.c}」を捨てました。ポン / ロン / パス${passNote}`;
     return;
   }
 
@@ -2264,6 +2290,8 @@ function hostExecutePon(arrangement, ponByIdx) {
   }).filter(Boolean);
 
   state.lastDiscard = null;
+  state.passSet = null;
+  window._iPassed = false;
   ponPlayer.melds.push({ type: 'pon', tiles: orderedTiles });
   log(`${ponPlayer.name} 「ポン！」`, true);
 
@@ -2505,16 +2533,50 @@ function declareRon() {
 function passClaim() {
   if (isGuest()) {
     sendActionToHost({ type: 'pass' });
+    // ゲスト側ではローカルでも「自分はパス済み」を記録して、ボタンを無効化
+    window._iPassed = true;
+    renderActions();
     return;
   }
   hostPassClaim(state.myIdx);
 }
 
+// ホスト権威：パス集計
+// 全プレイヤー（捨てた本人を除く）がパスして初めて次のターンへ進む
 function hostPassClaim(fromIdx) {
-  state.lastDiscard = null;
-  state.phase = 'discard';
-  if (isHost()) broadcastState();
-  proceedToNextTurn();
+  if (!isHost() && state.mode !== 'cpu') return;
+  if (state.phase !== 'awaiting-claim') return;
+  if (!state.lastDiscard) return;
+
+  const discarderIdx = state.lastDiscard.by;
+  if (fromIdx === discarderIdx) return; // 捨てた本人は無視
+
+  if (!state.passSet) state.passSet = [];
+  if (!state.passSet.includes(fromIdx)) state.passSet.push(fromIdx);
+
+  // CPUモード（自分1人がパスする想定）か、全員パス済みか判定
+  if (state.mode === 'cpu') {
+    // CPUモードでは自分以外のCPUは判定しない仕様（resolveClaimsFromCPUs相当）
+    state.passSet = null;
+    state.lastDiscard = null;
+    state.phase = 'discard';
+    proceedToNextTurn();
+    return;
+  }
+
+  // オンラインホスト：捨てた本人以外の全員がパスしたか確認
+  const needPassCount = state.players.length - 1;
+  if (state.passSet.length >= needPassCount) {
+    state.passSet = null;
+    state.lastDiscard = null;
+    state.phase = 'discard';
+    if (isHost()) broadcastState();
+    proceedToNextTurn();
+  } else {
+    // まだ全員のパスが揃っていない → 状態を全員に共有してUIを更新
+    if (isHost()) broadcastState();
+    render();
+  }
 }
 
 function declareTsumo() {
@@ -2725,9 +2787,11 @@ function startApprovalFlow(kind, claimerIdx, words) {
   window._pendingWin = {
     kind, claimerIdx, words,
     approvedSet: new Set(),
+    rejectedSet: new Set(),
     rejected: false,
     needCount
   };
+  log(`上がり承認フロー開始：claimer=${state.players[claimerIdx].name}, 必要承認数=${needCount}`);
   state.players.forEach((p, i) => {
     if (i === claimerIdx) return;
     if (i === state.myIdx) {
@@ -2797,7 +2861,12 @@ function approveWinApproval() {
     sendActionToHost({ type: 'win-approved' });
     showWaitingForOthersScreen('approved');
   } else {
+    // ホスト：承認を集計し、全員承認していなければ待機画面を表示
     handleApproveResponse(null, true, state.myIdx);
+    // _pendingWinが残っていれば（=まだ全員承認していない）待機画面表示
+    if (window._pendingWin) {
+      showWaitingForOthersScreen('approved');
+    }
   }
 }
 
@@ -2808,6 +2877,8 @@ function rejectWinApproval() {
     showWaitingForOthersScreen('rejected');
   } else {
     handleApproveResponse(null, false, state.myIdx);
+    // 却下した場合、_pendingWinは即クリアされて却下処理が走るが、
+    // 念のため待機画面を出さない（モーダルは閉じている）
   }
 }
 
@@ -2817,37 +2888,61 @@ function showWaitingForOthersScreen(myChoice) {
     <div style="text-align:center;">
       <h2>応 答 受 付</h2>
       <p style="margin-bottom:.8rem;">${msg}<br>他のプレイヤーの応答を待っています…</p>
+      <div style="font-size:.85rem;color:#888;margin-top:.6rem;" id="approvalProgress">承認状況：集計中…</div>
     </div>
   `;
   showModalWithHTML(html);
+  // 表示直後に最新進捗で更新（ホストの場合は自分の承認分が既に入っている）
+  updateApprovalProgress();
 }
 
 function handleApproveResponse(c, approved, fromIdx) {
   const pw = window._pendingWin;
-  if (!pw) return;
+  if (!pw) {
+    console.warn('[approve] no pending win');
+    return;
+  }
   let idx = fromIdx;
-  if (idx === undefined && c) {
+  if ((idx === undefined || idx === null) && c) {
     const hc = hostConns.find(h => h.conn === c);
     if (hc) idx = hc.playerIdx;
   }
-  if (idx === undefined) return;
-  if (idx === pw.claimerIdx) return;
+  if (idx === undefined || idx === null) {
+    console.warn('[approve] could not determine player idx');
+    return;
+  }
+  if (idx === pw.claimerIdx) {
+    console.warn('[approve] claimer cannot self-approve');
+    return;
+  }
+
+  // 既に応答済みなら無視（冪等）
+  if (pw.approvedSet.has(idx) || pw.rejectedSet.has(idx)) {
+    console.warn('[approve] player', idx, 'already responded');
+    // ただし進捗を再送して同期維持
+    hostBroadcast({ type: 'approval-progress', approved: pw.approvedSet.size, need: pw.needCount });
+    updateApprovalProgress();
+    return;
+  }
 
   if (!approved) {
+    pw.rejectedSet.add(idx);
     pw.rejected = true;
     window._pendingWin = null;
     hostBroadcast({ type: 'win-rejected-notice' });
     closeModal();
-    log('上がりは却下されました（チョンボ扱い）。ゲーム続行', true);
+    log(`プレイヤー ${state.players[idx].name} が上がりを却下しました（チョンボ扱い）`, true);
     broadcastState();
     render();
     return;
   }
 
   pw.approvedSet.add(idx);
+  log(`プレイヤー ${state.players[idx].name} が上がりを承認 (${pw.approvedSet.size}/${pw.needCount})`);
   hostBroadcast({ type: 'approval-progress', approved: pw.approvedSet.size, need: pw.needCount });
   updateApprovalProgress();
 
+  // 全員承認 → 上がり成立
   if (pw.approvedSet.size >= pw.needCount) {
     const { kind, claimerIdx, words } = pw;
     window._pendingWin = null;
