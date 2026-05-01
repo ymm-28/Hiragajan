@@ -439,13 +439,13 @@
     align-items: flex-end;
     min-height: 70px;
     padding: 0 .25rem;
-    touch-action: pan-y;  /* 縦スクロールは許可、横はドラッグに使う */
+    touch-action: pan-y;
   }
 
   .tile.in-hand {
     cursor: grab;
     transition: transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .15s;
-    touch-action: none;   /* 長押しメニュー抑制・自前で扱う */
+    touch-action: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
@@ -459,7 +459,6 @@
       0 6px 10px rgba(0,0,0,.5);
   }
 
-  /* 長押し中（プリドラッグ：まだ持ち上がる前） */
   .tile.in-hand.pre-drag {
     transform: translateY(-2px) scale(1.04);
     box-shadow:
@@ -469,7 +468,6 @@
     transition: transform .12s, box-shadow .12s;
   }
 
-  /* ドラッグ中 */
   .tile.in-hand.dragging {
     position: fixed;
     z-index: 300;
@@ -483,15 +481,9 @@
     pointer-events: none;
   }
 
-  /* 並び替え対象として隙間を空けてもらう牌 */
-  .tile.in-hand.drag-shift-right {
-    transform: translateX(20px);
-  }
-  .tile.in-hand.drag-shift-left {
-    transform: translateX(-20px);
-  }
+  .tile.in-hand.drag-shift-right { transform: translateX(20px); }
+  .tile.in-hand.drag-shift-left  { transform: translateX(-20px); }
 
-  /* 元の位置に空いた跡（ゴースト） */
   .tile.in-hand.ghost {
     opacity: .25;
     filter: grayscale(.5);
@@ -644,9 +636,7 @@
   .gb-slot .lbl { font-size: .7rem; color: var(--gold); margin-right: 4px; align-self: flex-start; }
 
   /* 上がり画面 */
-  .win-screen {
-    text-align: center;
-  }
+  .win-screen { text-align: center; }
   .win-screen .stamp {
     font-family: 'Shippori Mincho', serif;
     font-size: 3rem;
@@ -683,9 +673,7 @@
   }
 
   /* 振り返り画面 */
-  .review-modal {
-    max-width: 720px !important;
-  }
+  .review-modal { max-width: 720px !important; }
   .review-player {
     background: #f9f4e3;
     border: 2px solid #ddd;
@@ -710,9 +698,7 @@
     align-items: center;
     gap: .5rem;
   }
-  .review-player.winner .review-player-header {
-    color: var(--vermillion-dk);
-  }
+  .review-player.winner .review-player-header { color: var(--vermillion-dk); }
   .review-winner-badge {
     background: var(--vermillion);
     color: white;
@@ -777,7 +763,7 @@
     letter-spacing: .3em;
   }
 
-  /* CPUの宣言バナー */
+  /* 大宣言バナー */
   .declaration-banner {
     position: fixed;
     top: 50%;
@@ -788,23 +774,24 @@
     font-family: 'Shippori Mincho', serif;
     font-size: 4rem;
     font-weight: 800;
-    padding: 1rem 3rem;
+    padding: 1rem 1.8rem 1rem 3rem;
     border: 4px double var(--paper);
     box-shadow: 0 0 40px rgba(0,0,0,.7);
     letter-spacing: .3em;
+    text-align: center;
     z-index: 200;
     animation: declAnim 1.4s ease-out forwards;
     opacity: 0;
     pointer-events: none;
+    white-space: nowrap;
   }
   @keyframes declAnim {
-    0% { transform: translate(-50%, -50%) scale(.3) rotate(-15deg); opacity: 0; }
-    20% { transform: translate(-50%, -50%) scale(1.15) rotate(0deg); opacity: 1; }
-    70% { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
+    0%   { transform: translate(-50%, -50%) scale(.3) rotate(-15deg); opacity: 0; }
+    20%  { transform: translate(-50%, -50%) scale(1.15) rotate(0deg); opacity: 1; }
+    70%  { transform: translate(-50%, -50%) scale(1) rotate(0deg); opacity: 1; }
     100% { transform: translate(-50%, -50%) scale(.95) rotate(0deg); opacity: 0; }
   }
 
-  /* CPU上がり申請の確認ダイアログ用 */
   .modal .word-display {
     font-family: 'Klee One', serif;
     font-size: 1.5rem;
@@ -825,7 +812,7 @@
     letter-spacing: .05em;
   }
 
-  /* メルド（晒し牌）表示 */
+  /* メルド表示 */
   .melds {
     display: flex;
     gap: 4px;
@@ -863,7 +850,6 @@
     border-radius: 5px;
     border: 1px solid rgba(200, 54, 44, .4);
   }
-  /* ポン選択モーダルの牌 */
   .pon-candidate {
     cursor: pointer;
     transition: transform .12s, box-shadow .12s;
@@ -894,16 +880,11 @@
   <div class="player-select" id="modeMenu">
     <h3>モ ー ド を 選 ぶ</h3>
     <div class="player-buttons">
-      <button class="pbtn" onclick="startCpuGame()">
-        Ｃ Ｐ Ｕ 対 戦
-      </button>
-      <button class="pbtn" onclick="showOnlineMenu()">
-        友 人 対 戦
-      </button>
+      <button class="pbtn" onclick="startCpuGame()">Ｃ Ｐ Ｕ 対 戦</button>
+      <button class="pbtn" onclick="showOnlineMenu()">友 人 対 戦</button>
     </div>
   </div>
 
-  <!-- オンラインメニュー -->
   <div class="player-select" id="onlineMenu" style="display:none;">
     <h3>友 人 対 戦</h3>
     <div class="player-buttons">
@@ -914,7 +895,6 @@
     <div id="onlineStatus" style="margin-top:1rem;font-size:.9rem;color:var(--paper);"></div>
   </div>
 
-  <!-- ロビー画面 -->
   <div class="player-select" id="lobbyScreen" style="display:none;">
     <h3 id="lobbyTitle">対 戦 ロ ビ ー</h3>
     <div id="lobbyContent"></div>
@@ -947,16 +927,13 @@
       <span class="turn-indicator" id="turnIndicator">あなたの番</span>
     </div>
 
-    <!-- ポン牌の公開表示（常に右上に） -->
     <div class="meld-zone" id="meldZone" style="display:none;">
-      <div class="pool-label" style="color:var(--vermillion);">ポ ン 公 開 牌</div>
+      <div class="pool-label" style="color:var(--vermillion);">公 開 牌（ポ ン ・ カ ン）</div>
       <div id="myMelds" class="meld-display"></div>
     </div>
 
-    <!-- 5つのスロット：3文字×4 + 2文字×1 -->
     <div class="slots-container" id="slotsContainer"></div>
 
-    <!-- 余剰プール -->
     <div class="pool-zone">
       <div class="pool-label">余 剰 牌</div>
       <div class="my-tiles pool-tiles" id="myTiles"></div>
@@ -967,10 +944,8 @@
   </div>
 </section>
 
-<!-- ============== ログ ============== -->
 <div class="log" id="logBox" style="display:none;"></div>
 
-<!-- ============== モーダル ============== -->
 <div class="modal-overlay" id="modal">
   <div class="modal" id="modalContent"></div>
 </div>
@@ -982,8 +957,6 @@
    ひらがじゃん  ゲームロジック
    ============================================================ */
 
-// ───── 牌セット定義 ─────
-// 「あ〜ん」「を」を除く45音 各2個 = 90個
 const BASIC_KANA = [
   'あ','い','う','え','お',
   'か','き','く','け','こ',
@@ -996,7 +969,6 @@ const BASIC_KANA = [
   'ら','り','る','れ','ろ',
   'わ','ん'
 ];
-// 濁点・半濁点・拗音・長音 30音 各1個 = 30個
 const SPECIAL_KANA = [
   'が','ぎ','ぐ','げ','ご',
   'ざ','じ','ず','ぜ','ぞ',
@@ -1006,44 +978,34 @@ const SPECIAL_KANA = [
   'ゃ','ゅ','ょ','っ','ー'
 ];
 
-const CPU_NAMES = ['雀士  陽子','雀士  鉄郎','雀士  美月','雀士  源蔵'];
+const CPU_NAMES = ['CPU 1','CPU 2','CPU 3'];
 
 let state = null;
 
 /* ============================================================
    PeerJS オンライン対戦
-   ─────────────────────────────────────
-   - 接続モデル: ホスト権威。ゲストの操作はホストに送信、
-     ホストがロジック実行後に state をブロードキャスト
    ============================================================ */
-let peer = null;        // PeerJS インスタンス
-let conn = null;        // ゲスト用：ホストへの DataConnection
-let myPeerId = null;    // 自分の PeerID
+let peer = null;
+let conn = null;
+let myPeerId = null;
 
-// ホスト用：ゲスト接続を管理
-// hostConns: Array<{conn:DataConnection, name:string, playerIdx:number, ready:boolean, rematch:boolean}>
 let hostConns = [];
-// ゲスト用：自分の名前と再戦フラグ
 let myGuestName = null;
 let myRematchFlag = false;
-// ロビー用：参加メンバーリスト（ホストのみ管理。ゲストはホストから受信）
-// lobbyMembers: Array<{name:string, isHost:boolean, peerId:string|null}>
 let lobbyMembers = [];
 
 function isOnline() { return state && (state.mode === 'online-host' || state.mode === 'online-guest'); }
 function isHost()   { return state && state.mode === 'online-host'; }
 function isGuest()  { return state && state.mode === 'online-guest'; }
 
-// オンライン中、stateの変更後にホストが全ゲストに送信
-// 各ゲストには「自分以外のプレイヤーの手牌」を隠匿した state を個別送信
 function broadcastState() {
   if (!isHost()) return;
   hostConns.forEach(hc => {
     if (!hc.conn || !hc.conn.open) return;
-    const targetIdx = hc.playerIdx;  // このゲストのプレイヤーインデックス
+    const targetIdx = hc.playerIdx;
     const safe = JSON.parse(JSON.stringify(state));
     safe.players.forEach((p, i) => {
-      if (i === targetIdx) return;  // 受信者自身の手牌は残す
+      if (i === targetIdx) return;
       p.hand = p.hand.map(t => ({ id: t.id, c: '?', hidden: true }));
       if (p.drawn) p.drawn = { id: p.drawn.id, c: '?', hidden: true };
     });
@@ -1052,14 +1014,12 @@ function broadcastState() {
   });
 }
 
-// ゲストがアクションをホストに送信
 function sendActionToHost(action) {
   if (!isGuest() || !conn || !conn.open) return false;
   conn.send({ type: 'action', action });
   return true;
 }
 
-// ホストから全ゲストへメッセージブロードキャスト
 function hostBroadcast(msg) {
   if (!isHost()) return;
   hostConns.forEach(hc => {
@@ -1069,7 +1029,6 @@ function hostBroadcast(msg) {
   });
 }
 
-// ホストから特定のゲスト1人に送信
 function hostSendTo(playerIdx, msg) {
   if (!isHost()) return;
   const hc = hostConns.find(h => h.playerIdx === playerIdx);
@@ -1078,10 +1037,8 @@ function hostSendTo(playerIdx, msg) {
   }
 }
 
-// ホストがゲストからのアクションを受け取った時の処理
 function handleGuestAction(action, fromConn) {
   if (!isHost()) return;
-  // 送信元のplayerIdxを特定
   const hc = hostConns.find(h => h.conn === fromConn);
   const fromIdx = hc ? hc.playerIdx : null;
 
@@ -1092,20 +1049,20 @@ function handleGuestAction(action, fromConn) {
     case 'pon':
       hostExecutePon(action.arrangement, fromIdx);
       break;
+    case 'kan':
+      hostExecuteKan(action.arrangement, fromIdx);
+      break;
     case 'pass':
       hostPassClaim(fromIdx);
       break;
     case 'win-claim':
-      // ゲストが上がり申請 → 全員(上がる人除く)に承認を求める
       startApprovalFlow(action.kind, action.playerIdx, action.words);
       break;
   }
 }
 
-// ゲストがホストから受け取ったメッセージを処理
 function handleHostMessage(msg) {
   if (msg.type === 'lobby-update') {
-    // ロビーメンバー更新
     lobbyMembers = msg.members;
     if (document.getElementById('lobbyScreen').style.display !== 'none') {
       renderGuestLobby();
@@ -1118,13 +1075,11 @@ function handleHostMessage(msg) {
     return;
   }
   if (msg.type === 'game-start') {
-    // ゲーム開始通知。state は次の 'state' メッセージで来る
     state = null;
     document.getElementById('lobbyScreen').style.display = 'none';
     document.getElementById('titleScreen').style.display = 'none';
     document.getElementById('gameScreen').classList.add('active');
     document.getElementById('logBox').style.display = 'block';
-    // 自分の myIdx をメモ
     window._guestMyIdx = msg.myIdx;
     window._guestMembers = msg.members;
     return;
@@ -1140,7 +1095,6 @@ function handleHostMessage(msg) {
     state.mode = 'online-guest';
     state.myIdx = myIdx;
 
-    // 名前を自分視点に書き換え（lobbyMembers ベース）
     const members = window._guestMembers || lobbyMembers;
     state.players.forEach((p, i) => {
       const m = members[i];
@@ -1149,7 +1103,6 @@ function handleHostMessage(msg) {
       }
     });
 
-    // 自分のhand順序・slotIdをマージ
     if (mySavedHandOrder && state.players[myIdx]) {
       const incoming = state.players[myIdx].hand;
       const incomingIds = new Set(incoming.map(t => t.id));
@@ -1170,7 +1123,6 @@ function handleHostMessage(msg) {
     }
     render();
   } else if (msg.type === 'win-review') {
-    // 全プレイヤーの振り返り画面
     setTimeout(() => showReviewScreen(msg.reviewData), 1200);
   } else if (msg.type === 'draw') {
     showDrawScreen();
@@ -1179,10 +1131,8 @@ function handleHostMessage(msg) {
   } else if (msg.type === 'log') {
     log(msg.message, msg.highlight);
   } else if (msg.type === 'win-pending') {
-    // 誰かが上がり宣言 → 自分は承認/却下を選択
     showWinApprovalModal(msg.kind, msg.playerIdx, msg.words);
   } else if (msg.type === 'win-claimer-pending') {
-    // 自分（ゲスト）が上がり申請 → 待機画面
     showWinPendingScreen(msg.words);
   } else if (msg.type === 'approval-progress') {
     const progress = document.getElementById('approvalProgress');
@@ -1193,18 +1143,15 @@ function handleHostMessage(msg) {
   } else if (msg.type === 'rematch-progress') {
     updateRematchProgress(msg);
   } else if (msg.type === 'rematch-start') {
-    // 再戦開始：state は次の 'state' で来る
     closeModal();
     state = null;
     window._guestMyIdx = msg.myIdx;
   }
 }
 
-// ───── PeerJSの接続セットアップ ─────
 function setupPeer(asHost) {
   return new Promise((resolve, reject) => {
     try {
-      // 既存ピアがあれば破棄
       if (peer) { try { peer.destroy(); } catch(e){} peer = null; }
       if (conn) { try { conn.close(); } catch(e){} conn = null; }
       peer = new Peer({ debug: 1 });
@@ -1219,7 +1166,6 @@ function setupPeer(asHost) {
         if (!resolved) {
           reject(err);
         } else {
-          // 接続後のエラーは画面に表示
           setOnlineStatus('PeerJSエラー: ' + (err.type || err.message || err));
         }
       });
@@ -1229,7 +1175,6 @@ function setupPeer(asHost) {
   });
 }
 
-// ゲスト用：ホストへの conn のハンドラ登録
 function attachConnHandlers() {
   conn.on('data', data => {
     if (data) handleHostMessage(data);
@@ -1244,11 +1189,9 @@ function attachConnHandlers() {
   });
 }
 
-// conn.on('open') の登録漏れを防ぐヘルパー（既に開いていれば即実行）
 function whenConnOpen(callback) {
   if (!conn) return;
   if (conn.open) {
-    // 既に open している → すぐ実行
     callback();
   } else {
     conn.on('open', callback);
@@ -1260,7 +1203,6 @@ function setOnlineStatus(msg) {
   if (el) el.innerHTML = msg;
 }
 
-// ───── 名前入力フォーム（ホスト用） ─────
 function showHostNameForm() {
   setOnlineStatus(`
     <div style="margin-bottom:.5rem;font-size:.9rem;">あなたの名前を入力してください：</div>
@@ -1269,18 +1211,17 @@ function showHostNameForm() {
   `);
 }
 
-// ───── ホスト：部屋作成 ─────
 async function hostStartOnline() {
   const nameField = document.getElementById('hostNameField');
   const name = nameField ? (nameField.value.trim() || 'ホスト') : 'ホスト';
-  myGuestName = name;  // ホストもこの変数に名前保存
+  myGuestName = name;
   setOnlineStatus('ピアサーバーに接続中…');
   try {
     const id = await setupPeer(true);
     lobbyMembers = [{ name: name, isHost: true, peerId: null }];
     hostConns = [];
     peer.on('connection', c => {
-      whenSpecificConnOpen(c, () => { /* lobby-join 待ち */ });
+      whenSpecificConnOpen(c, () => {});
       c.on('data', data => handleDataFromGuest(c, data));
       c.on('close', () => removeGuestFromLobby(c));
       c.on('error', err => { console.error('Guest conn error:', err); });
@@ -1291,12 +1232,10 @@ async function hostStartOnline() {
   }
 }
 
-// 任意のconnのopenを待つ
 function whenSpecificConnOpen(c, cb) {
   if (c.open) cb(); else c.on('open', cb);
 }
 
-// ホスト：ゲストから来たデータの一次処理
 function handleDataFromGuest(c, data) {
   if (!data) return;
   if (!state) {
@@ -1313,7 +1252,6 @@ function handleDataFromGuest(c, data) {
     }
     return;
   }
-  // ゲーム中のメッセージ
   if (data.type === 'action') {
     handleGuestAction(data.action, c);
   } else if (data.type === 'win-approved') {
@@ -1386,12 +1324,10 @@ function hostStartGame() {
       try { hc.conn.send({ type: 'game-start', myIdx: hc.playerIdx, totalPlayers: lobbyMembers.length, members: lobbyMembers }); } catch(e) {}
     }
   });
-  // ロビー画面を閉じる
   document.getElementById('lobbyScreen').style.display = 'none';
   startGame(lobbyMembers.length, { mode: 'online-host' });
 }
 
-// ───── ゲスト：参加フォーム ─────
 function showJoinForm() {
   setOnlineStatus(`
     <div style="margin-bottom:.5rem;font-size:.9rem;">あなたの名前を入力：</div>
@@ -1485,14 +1421,11 @@ function hideOnlineMenu() {
   if (peer && !state) { try { peer.destroy(); } catch(e){} peer = null; conn = null; hostConns = []; }
 }
 
-
-// ───── 山を作成（120個） ─────
 function buildWall() {
   const wall = [];
   let id = 0;
   BASIC_KANA.forEach(c => { wall.push({id:id++,c}); wall.push({id:id++,c}); });
   SPECIAL_KANA.forEach(c => { wall.push({id:id++,c}); });
-  // シャッフル
   for (let i = wall.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [wall[i], wall[j]] = [wall[j], wall[i]];
@@ -1500,13 +1433,10 @@ function buildWall() {
   return wall;
 }
 
-// ───── ゲーム開始 ─────
-// ───── CPU対戦の開始 ─────
 function startCpuGame() {
   startGame(2, { mode: 'cpu' });
 }
 
-// ───── ゲーム開始（共通） ─────
 function startGame(numPlayers, opts) {
   opts = opts || { mode: 'cpu' };
 
@@ -1522,23 +1452,18 @@ function startGame(numPlayers, opts) {
   }
 
   const wall = buildWall();
-
   const players = [];
   if (opts.mode === 'online-host') {
-    // ホスト + ゲスト1〜3人
-    // lobbyMembers から各プレイヤーの名前を取得
     lobbyMembers.forEach((m, i) => {
       const displayName = (i === 0) ? `あなた（${m.name}）` : m.name;
       players.push({ idx:i, name:displayName, isCPU:false, hand:[], melds:[], drawn:null });
     });
   } else {
-    // CPU対戦
     players.push({ idx:0, name:'あなた', isCPU:false, hand:[], melds:[], drawn:null });
     for (let i = 1; i < numPlayers; i++) {
       players.push({ idx:i, name:CPU_NAMES[i-1], isCPU:true, hand:[], melds:[], drawn:null });
     }
   }
-  // 各プレイヤーに13個配る
   for (const p of players) {
     for (let i = 0; i < 13; i++) {
       const tile = wall.pop();
@@ -1549,18 +1474,13 @@ function startGame(numPlayers, opts) {
   }
 
   state = {
-    players,
-    wall,
-    discards: [],
-    turn: 0,
-    phase: 'draw',
-    lastDiscard: null,
-    log: [],
+    players, wall, discards: [],
+    turn: 0, phase: 'draw',
+    lastDiscard: null, log: [],
     selectedTileId: null,
     awaitingPonResponse: false,
     lastDrawnId: null,
-    mode: opts.mode,
-    myIdx: 0
+    mode: opts.mode, myIdx: 0
   };
 
   document.getElementById('titleScreen').style.display = 'none';
@@ -1572,25 +1492,17 @@ function startGame(numPlayers, opts) {
   log((opts.mode==='online-host'?players[0].name:'あなた') + 'が親です');
   render();
 
-  if (opts.mode === 'online-host') {
-    broadcastState();
-  }
-
+  if (opts.mode === 'online-host') broadcastState();
   doDraw(0);
 }
 
-// ───── 自分プレイヤー取得 ─────
-function getMe() {
-  return state.players[state.myIdx];
-}
+function getMe() { return state.players[state.myIdx]; }
 
-// ───── 手牌ソート ─────
 function sortHand(p) {
   const order = [...BASIC_KANA, ...SPECIAL_KANA];
   p.hand.sort((a,b) => order.indexOf(a.c) - order.indexOf(b.c));
 }
 
-// ───── タイル要素を生成 ─────
 function buildTileEl(t) {
   const isLastDrawn = (state.lastDrawnId === t.id);
   const isSelected = (state.selectedTileId === t.id);
@@ -1602,7 +1514,6 @@ function buildTileEl(t) {
   return el;
 }
 
-// ───── ログ出力 ─────
 function log(msg, highlight=false) {
   if (!state) return;
   state.log.push({msg, highlight});
@@ -1620,10 +1531,8 @@ function renderLog() {
   box.scrollTop = box.scrollHeight;
 }
 
-// ───── ツモ ─────
 function doDraw(playerIdx) {
   if (state.wall.length === 0) {
-    // 流局
     if (isHost()) hostBroadcast({ type: 'draw' });
     showDrawScreen();
     return;
@@ -1633,7 +1542,6 @@ function doDraw(playerIdx) {
   if (p.isCPU) {
     p.drawn = tile;
   } else {
-    // プレイヤー：手牌末尾に追加 + ハイライト用にIDを記録
     tile.slotId = 'pool';
     p.hand.push(tile);
     state.lastDrawnId = tile.id;
@@ -1649,12 +1557,9 @@ function doDraw(playerIdx) {
   }
 }
 
-// ───── 描画 ─────
 function render() {
-  // 山牌残数
   document.getElementById('wallCount').textContent = state.wall.length;
 
-  // 他プレイヤー（自分以外）
   const oppDiv = document.getElementById('opponents');
   oppDiv.innerHTML = '';
   for (let i = 0; i < state.players.length; i++) {
@@ -1676,33 +1581,26 @@ function render() {
       </div>`;
   }
 
-  // 捨て牌
   const discardDiv = document.getElementById('discardTiles');
   discardDiv.innerHTML = state.discards.map((d, i) => {
     const isLast = (i === state.discards.length - 1) && state.lastDiscard;
     return `<div class="tile small discarded${isLast?' last-discard':''}">${d.tile.c}</div>`;
   }).join('');
 
-  // 自分の手牌：スロット + プール
   const me = getMe();
-  // メルド数に応じてスロット構成を決定
-  // メルドは3文字グループとして確定済み → 残りで作るのは（3文字×(4-melds)） + （2文字×1）
   const meldsCount = me.melds.length;
   const need3 = 4 - meldsCount;
-  // スロット定義 [{id, label, capacity}, ...]
   const slotDefs = [];
   for (let i = 0; i < need3; i++) {
     slotDefs.push({ id: `g${i}`, label: `３文字`, capacity: 3 });
   }
   slotDefs.push({ id: `g4`, label: `２文字`, capacity: 2 });
 
-  // 既存タイルの slotId が、もう存在しないスロットを指していたら 'pool' に戻す
   const validSlotIds = new Set(slotDefs.map(s => s.id).concat(['pool']));
   me.hand.forEach(t => {
     if (!validSlotIds.has(t.slotId)) t.slotId = 'pool';
   });
 
-  // スロットコンテナ描画
   const slotsContainer = document.getElementById('slotsContainer');
   slotsContainer.innerHTML = '';
   slotDefs.forEach(s => {
@@ -1716,7 +1614,6 @@ function render() {
     tilesDiv.className = 'slot-tiles';
     tilesDiv.dataset.slot = s.id;
     tilesInSlot.forEach(t => tilesDiv.appendChild(buildTileEl(t)));
-    // 空き枠プレースホルダーを表示
     const emptyCount = Math.max(0, s.capacity - tilesInSlot.length);
     for (let i = 0; i < emptyCount; i++) {
       const ph = document.createElement('div');
@@ -1727,17 +1624,14 @@ function render() {
     slotsContainer.appendChild(slotEl);
   });
 
-  // 余剰プール
   const poolDiv = document.getElementById('myTiles');
   poolDiv.innerHTML = '';
   poolDiv.dataset.slot = 'pool';
   const poolTiles = me.hand.filter(t => t.slotId === 'pool');
   poolTiles.forEach(t => poolDiv.appendChild(buildTileEl(t)));
 
-  // ドラッグ＆クリックハンドラの取り付け
   attachTileHandlers();
 
-  // 自分のメルド（ポン公開牌）
   const meldZone = document.getElementById('meldZone');
   const meldsDiv = document.getElementById('myMelds');
   if (me.melds.length > 0) {
@@ -1750,30 +1644,23 @@ function render() {
     meldsDiv.innerHTML = '';
   }
 
-  // ターンインジケーター
   document.getElementById('turnIndicator').classList.toggle('show', state.turn === state.myIdx && state.phase === 'discard');
 
-  // アクションボタン
   renderActions();
-
-  // ログ表示も更新（state置き換え後の同期用）
   renderLog();
 }
 
-// ───── アクションボタン ─────
 function renderActions() {
   const div = document.getElementById('myActions');
   div.innerHTML = '';
   const me = getMe();
 
   if (state.phase === 'awaiting-claim') {
-    // 捨てた本人にはアクションを見せない
     if (state.lastDiscard && state.lastDiscard.by === state.myIdx) {
       div.innerHTML = '';
       document.getElementById('hintText').textContent = `あなたが「${state.lastDiscard.tile.c}」を捨てました。相手の応答待ち…`;
       return;
     }
-    // 他プレイヤーが捨てた → ポン/ロンの選択
     const lastTile = state.lastDiscard.tile;
     div.innerHTML = `
       <button class="action-btn primary" onclick="declarePon()">ポ ン</button>
@@ -1786,14 +1673,15 @@ function renderActions() {
   }
 
   if (state.phase === 'discard' && state.turn === state.myIdx) {
-    // 自分の手番：捨てる or ツモ上がり
     const selected = state.selectedTileId !== null;
+    // カンは「ツモ直後で、まだ余剰スロットの整理をしていない時」が前提だが、
+    // 実装上は「ツモ後〜捨てる前」全般で許可する。手牌が4枚以上必要。
+    const canKan = me.hand.length >= 4;
     div.innerHTML = `
       <button class="action-btn primary" onclick="declareTsumo()">ツ モ 上 が り</button>
+      <button class="action-btn" ${canKan?'':'disabled'} onclick="declareKan()">カ ン</button>
       <button class="action-btn" ${selected?'':'disabled'} onclick="discardSelected()">捨 て る</button>
     `;
-    // スロット完成状況のヒント
-    const me = getMe();
     const slotDefs2 = [];
     for (let i = 0; i < 4 - me.melds.length; i++) slotDefs2.push({id:`g${i}`,cap:3});
     slotDefs2.push({id:'g4',cap:2});
@@ -1808,52 +1696,32 @@ function renderActions() {
     return;
   }
 
-  // 自分の番でない時
   div.innerHTML = '';
   document.getElementById('hintText').textContent = '他のプレイヤーの番です…　（手牌の並び替えはできます）';
 }
 
-// ───── 牌を選択 ─────
 function selectTile(id) {
-  if (state.turn !== state.myIdx || state.phase !== 'discard') {
-    // 自分の番でない時はドラッグ並び替えのみ。タップ選択は無効。
-    return;
-  }
+  if (state.turn !== state.myIdx || state.phase !== 'discard') return;
   state.selectedTileId = (state.selectedTileId === id) ? null : id;
   render();
 }
 
-/* ============================================================
-   手牌のドラッグ＆ドロップ並び替え
-   ─────────────────────────────────────────
-   - 短いタップ → クリックとして selectTile
-   - 長押し（300ms）→ pre-drag（並び替えモード待機）
-   - pre-drag 中にポインタを動かすと → 本ドラッグ開始
-   - 本ドラッグ中、他タイルの中央x座標を越えたら配列を入れ替え
-   ============================================================ */
-
 const DRAG = {
-  state: 'idle',     // 'idle' | 'pressing' | 'pre-drag' | 'dragging'
-  tile: null,        // 対象のDOM要素
-  tileId: null,
-  startX: 0,
-  startY: 0,
+  state: 'idle',
+  tile: null, tileId: null,
+  startX: 0, startY: 0,
   pointerId: null,
   pressTimer: null,
   movedDistance: 0,
-  // ドラッグ中のサイズ・位置
-  width: 0,
-  height: 0,
-  // ドラッグ開始時刻（誤操作防止用）
+  width: 0, height: 0,
   pressStartTime: 0
 };
 
-const PRESS_HOLD_MS = 150;       // 長押し成立時間（pre-drag開始）
-const TAP_TOLERANCE_PX = 8;      // タップとみなせる最大移動距離
-const DRAG_BEGIN_PX = 4;         // pre-drag→本ドラッグへの距離閾値
+const PRESS_HOLD_MS = 150;
+const TAP_TOLERANCE_PX = 8;
+const DRAG_BEGIN_PX = 4;
 
 function attachTileHandlers() {
-  // プール内 + 各スロット内のタイル
   const tiles = document.querySelectorAll('#myTiles .tile.in-hand, .slot-tiles .tile.in-hand');
   tiles.forEach(t => {
     t.addEventListener('pointerdown', onTilePointerDown);
@@ -1861,14 +1729,11 @@ function attachTileHandlers() {
 }
 
 function onTilePointerDown(e) {
-  // 前回のタップが何らかの理由で idle に戻っていなければ強制リセット
   if (DRAG.state !== 'idle') {
-    // 既存リスナーを念のため除去
     window.removeEventListener('pointermove', onTilePointerMove);
     window.removeEventListener('pointerup', onTilePointerUp);
     window.removeEventListener('pointercancel', onTilePointerUp);
     clearTimeout(DRAG.pressTimer);
-    // ドラッグ用要素・placeholder の片付け
     const oldTile = DRAG.tile;
     const oldPh = DRAG.placeholder;
     if (oldTile && oldTile.classList.contains('dragging') && oldTile.parentNode === document.body) {
@@ -1879,10 +1744,8 @@ function onTilePointerDown(e) {
     if (oldPh && oldPh.parentNode) oldPh.parentNode.removeChild(oldPh);
     DRAG.state = 'idle';
     DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
-    // この pointerdown 自体は破棄せず、下に進ませる
   }
 
-  // マウスは左ボタンのみ
   if (e.pointerType === 'mouse' && e.button !== 0) return;
 
   const tile = e.currentTarget;
@@ -1899,10 +1762,8 @@ function onTilePointerDown(e) {
   DRAG.width = rect.width;
   DRAG.height = rect.height;
 
-  // ポインタキャプチャを取得
   try { tile.setPointerCapture(e.pointerId); } catch(err) {}
 
-  // 長押しタイマー
   DRAG.pressTimer = setTimeout(() => {
     if (DRAG.state === 'pressing') {
       DRAG.state = 'pre-drag';
@@ -1927,8 +1788,6 @@ function onTilePointerMove(e) {
   DRAG.movedDistance = Math.max(DRAG.movedDistance, dist);
 
   if (DRAG.state === 'pressing') {
-    // 大きく動いたら長押し成立タイマーをキャンセル（ドラッグは開始しない）
-    // → このまま離せばタップ判定はTAP_TOLERANCE_PXで弾かれる
     if (dist > TAP_TOLERANCE_PX) {
       clearTimeout(DRAG.pressTimer);
     }
@@ -1967,7 +1826,6 @@ function startActualDrag(e) {
   tile.parentNode.insertBefore(placeholder, tile);
   DRAG.placeholder = placeholder;
 
-  // タイル本体をfixedに（一旦bodyに移動するとスロットの幅変動の影響を受けない）
   document.body.appendChild(tile);
   tile.classList.add('dragging');
   tile.style.left = e.clientX + 'px';
@@ -1976,59 +1834,40 @@ function startActualDrag(e) {
   tile.style.height = DRAG.height + 'px';
 }
 
-/* ドラッグ中：ポインタの真下のゾーンと位置を判定して、placeholder を移動する */
 function updateDragOrder(pointerX, pointerY) {
   if (!DRAG.placeholder) return;
 
-  // ドラッグ中タイル自体は pointer-events: none なので、その下のスロット要素が拾える
   const stack = document.elementsFromPoint(pointerX, pointerY);
 
-  // ターゲットゾーン（pool または slot-tiles）を探す
   let targetZone = null;
   for (const el of stack) {
     if (el.classList.contains('slot-tiles') || el.classList.contains('pool-tiles')) {
       targetZone = el;
       break;
     }
-    // 親をたどる
     const slotParent = el.closest && el.closest('.slot-tiles, .pool-tiles');
     if (slotParent) { targetZone = slotParent; break; }
   }
 
-  // 既存ハイライトをクリア
   document.querySelectorAll('.slot, .pool-zone').forEach(s => {
     s.classList.remove('drag-target');
     s.classList.remove('drag-reject');
   });
 
-  if (!targetZone) {
-    // ゾーンの外に出たら placeholder はそのまま
-    return;
-  }
+  if (!targetZone) return;
 
-  // ハイライト
   const targetWrap = targetZone.closest('.slot') || targetZone.closest('.pool-zone');
   if (targetWrap) targetWrap.classList.add('drag-target');
 
-  // 容量チェック：スロットの場合のみ。プールは無制限。
-  // 既にこのスロットに placeholder が入っている場合（＝同じスロット内で並べ替えているだけ）はOK
   if (targetZone.classList.contains('slot-tiles')) {
     const slotId = targetZone.dataset.slot;
     const me = getMe();
-    // ドラッグ中タイルは現在 body 直下にあるが、論理上「元のスロット」にあった
-    // → そのslotIdは draggedTile.slotId に保持されているはず
     const draggedTile = me.hand.find(t => t.id === DRAG.tileId);
     const draggedFromSameSlot = draggedTile && draggedTile.slotId === slotId;
-
-    // ターゲットスロットの定義された容量
     const slotDef = (slotId === 'g4') ? 2 : 3;
-    // 現在そのスロットにいるタイル数（ドラッグ中タイル自身は除く）
     const currentCount = me.hand.filter(t => t.slotId === slotId && t.id !== DRAG.tileId).length;
 
-    // もし draggedTile が同じスロット出身なら、そのスロット内での並べ替えだけ → OK（容量を超えない）
-    // 違うスロット/プール出身なら、新しく1個増えるので容量を超えていないか確認
     if (!draggedFromSameSlot && currentCount >= slotDef) {
-      // 拒否：placeholderは動かさない、赤い禁止表示に切り替え
       if (targetWrap) {
         targetWrap.classList.remove('drag-target');
         targetWrap.classList.add('drag-reject');
@@ -2037,9 +1876,6 @@ function updateDragOrder(pointerX, pointerY) {
     }
   }
 
-  // ターゲットゾーン内の挿入位置を決定
-  // - スロット内：1行 → x座標で判定
-  // - プール内：複数行になり得る → 同じ行のもの（y座標が近い）の中で x で判定
   const draggable = Array.from(targetZone.children).filter(el =>
     !el.dataset.placeholder &&
     !el.classList.contains('slot-placeholder') &&
@@ -2049,35 +1885,28 @@ function updateDragOrder(pointerX, pointerY) {
   let insertBefore = null;
 
   if (targetZone.classList.contains('pool-tiles')) {
-    // プールは複数行。ポインタの y 座標と同じ行のもののみで判定
     const sameRow = draggable.filter(el => {
       const r = el.getBoundingClientRect();
       return pointerY >= r.top && pointerY <= r.bottom;
     });
     if (sameRow.length === 0) {
-      // 同じ行に他のタイルがない → ポインタの y より下にある最初のタイルの前 or 末尾
-      // → 上の行を超えていれば、その行の末尾に挿入
-      // 単純化：ポインタより下にあるタイルの中で最初のもの
       for (const el of draggable) {
         const r = el.getBoundingClientRect();
         if (r.top > pointerY) { insertBefore = el; break; }
       }
     } else {
-      // 同じ行の中でx座標から判定
       for (const el of sameRow) {
         const r = el.getBoundingClientRect();
         if (pointerX < r.left + r.width / 2) { insertBefore = el; break; }
       }
     }
   } else {
-    // スロット内：基本1行
     for (const el of draggable) {
       const r = el.getBoundingClientRect();
       if (pointerX < r.left + r.width / 2) { insertBefore = el; break; }
     }
   }
 
-  // 移動が必要か判定
   const ph = DRAG.placeholder;
   let needsMove = false;
   if (ph.parentNode !== targetZone) {
@@ -2085,38 +1914,29 @@ function updateDragOrder(pointerX, pointerY) {
   } else if (insertBefore) {
     if (ph.nextSibling !== insertBefore) needsMove = true;
   } else {
-    // 末尾に置きたい：但しスロット内ではプレースホルダー（slot-placeholder）が末尾に並んでいる可能性がある
-    // → 単純に「末尾の slot-placeholder の前 or コンテナ末尾」に置く
     const lastNonPlaceholder = Array.from(targetZone.children).filter(c => !c.classList.contains('slot-placeholder') && !c.dataset.placeholder).pop();
     if (lastNonPlaceholder && ph.previousSibling !== lastNonPlaceholder && ph !== lastNonPlaceholder.nextSibling) {
       needsMove = true;
     } else if (!lastNonPlaceholder) {
-      // 空のスロット → 先頭に
       needsMove = (ph.parentNode !== targetZone || ph !== targetZone.firstChild);
     }
   }
 
   if (!needsMove) return;
 
-  // FLIP: 関係する全ゾーン内のタイルの位置を記録
   const allActiveTiles = Array.from(document.querySelectorAll('#myTiles .tile.in-hand, .slot-tiles .tile.in-hand'))
     .filter(el => el !== DRAG.tile);
   const before = new Map();
   allActiveTiles.forEach(el => before.set(el, el.getBoundingClientRect()));
 
-  // ── スロット容量保持ロジック ──
-  // placeholder の出元と移動先がスロットなら、slot-placeholder（空き枠）の数を調整して
-  // 「枠数 = 容量」を保つ
   const oldZone = ph.parentNode;
   const newZone = targetZone;
 
-  // 旧位置がスロットなら → そのスロットに空き枠を1つ追加（末尾に）
   if (oldZone && oldZone.classList.contains('slot-tiles')) {
     const sp = document.createElement('div');
     sp.className = 'slot-placeholder';
     oldZone.appendChild(sp);
   }
-  // 新位置がスロットなら → そのスロットの空き枠を1つ削除（末尾の slot-placeholder）
   if (newZone.classList.contains('slot-tiles')) {
     const slotPlaceholders = Array.from(newZone.children).filter(c => c.classList.contains('slot-placeholder'));
     if (slotPlaceholders.length > 0) {
@@ -2124,11 +1944,9 @@ function updateDragOrder(pointerX, pointerY) {
     }
   }
 
-  // placeholder を移動
   if (insertBefore) {
     targetZone.insertBefore(ph, insertBefore);
   } else {
-    // 末尾に：slot-placeholderがある場合はその前
     const firstSlotPlaceholder = Array.from(targetZone.children).find(c => c.classList.contains('slot-placeholder'));
     if (firstSlotPlaceholder) {
       targetZone.insertBefore(ph, firstSlotPlaceholder);
@@ -2137,7 +1955,6 @@ function updateDragOrder(pointerX, pointerY) {
     }
   }
 
-  // FLIP: 移動後の位置から差分計算
   allActiveTiles.forEach(el => {
     const rectBefore = before.get(el);
     if (!rectBefore) return;
@@ -2166,21 +1983,16 @@ function onTilePointerUp(e) {
   const tappedId = DRAG.tileId;
   const movedDist = DRAG.movedDistance;
 
-  // dragging 中だった場合は finishDrag に処理を委ねる（DRAG.* はそのまま渡す）
   if (wasState === 'dragging') {
     finishDrag();
     return;
   }
 
-  // pressing or pre-drag で離した場合
-  // pre-drag のハイライトを除去
   if (DRAG.tile) DRAG.tile.classList.remove('pre-drag');
 
-  // 状態リセット
   DRAG.state = 'idle';
   DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
 
-  // 移動が少なければ → タップとして処理
   if (movedDist <= TAP_TOLERANCE_PX) {
     selectTile(tappedId);
   }
@@ -2191,23 +2003,19 @@ function finishDrag() {
   const ph = DRAG.placeholder;
   const me = getMe();
 
-  // placeholder の親ゾーンから新しい slotId を決定
   let newSlotId = 'pool';
   if (ph && ph.parentNode) {
     const zone = ph.parentNode;
     if (zone.dataset.slot) newSlotId = zone.dataset.slot;
   }
 
-  // 対象タイルの slotId を更新
   const draggedTile = me.hand.find(t => t.id === DRAG.tileId);
   if (draggedTile) draggedTile.slotId = newSlotId;
 
-  // me.hand 配列を「全ゾーンを横断したDOM順序」に従って再構築
-  // → 各ゾーンを順に走査して、その中のタイルIDを集める
   const newOrder = [];
   const zones = [
     ...document.querySelectorAll('.slot-tiles'),
-    document.getElementById('myTiles')  // pool
+    document.getElementById('myTiles')
   ];
   zones.forEach(zone => {
     Array.from(zone.children).forEach(el => {
@@ -2219,7 +2027,6 @@ function finishDrag() {
     });
   });
 
-  // ドラッグ中タイルがDOM上から消えていればnewOrderに含まれない可能性がある → 補完
   if (!newOrder.includes(DRAG.tileId)) {
     newOrder.push(DRAG.tileId);
   }
@@ -2227,8 +2034,6 @@ function finishDrag() {
   const byId = new Map(me.hand.map(t => [t.id, t]));
   me.hand = newOrder.map(id => byId.get(id)).filter(Boolean);
 
-  // 後片付け
-  // ドラッグに使った tile は body 直下にあり、render() で手牌が再描画されるため不要 → 削除
   if (tile && tile.parentNode) tile.parentNode.removeChild(tile);
   if (ph && ph.parentNode) ph.parentNode.removeChild(ph);
   document.querySelectorAll('.slot, .pool-zone').forEach(s => {
@@ -2239,27 +2044,22 @@ function finishDrag() {
   DRAG.state = 'idle';
   DRAG.tile = null; DRAG.tileId = null; DRAG.placeholder = null;
 
-  // 再描画
   render();
 }
 
-// ───── 選んだ牌を捨てる ─────
 function discardSelected() {
   if (state.selectedTileId === null) return;
   const id = state.selectedTileId;
 
   if (isGuest()) {
-    // ゲスト: アクション送信のみ。state変更はホストが行う
     sendActionToHost({ type: 'discard', playerIdx: state.myIdx, tileId: id });
     state.selectedTileId = null;
     return;
   }
 
-  // ホスト or CPUモード: ローカルで処理
   hostDoDiscard(state.myIdx, id);
 }
 
-// ホスト権威：捨てる処理本体
 function hostDoDiscard(playerIdx, tileId) {
   const p = state.players[playerIdx];
   const idx = p.hand.findIndex(t => t.id === tileId);
@@ -2270,45 +2070,32 @@ function hostDoDiscard(playerIdx, tileId) {
   doDiscard(playerIdx, tile);
 }
 
-// ───── 捨てる処理（共通） ─────
 function doDiscard(playerIdx, tile) {
   const p = state.players[playerIdx];
   state.discards.push({tile, by:playerIdx});
   state.lastDiscard = {tile, by:playerIdx, byName:p.name};
   log(`${p.name} → 「${tile.c}」を捨てた`);
 
-  // ポン/ロンの宣言を待つ
-  // モード別の処理：
-  //  - CPU対戦：自分(0)が捨てた → CPUの判定（しない）→ 次へ
-  //             CPU(他)が捨てた → 自分にポン/ロンの選択提示
-  //  - オンライン：相手プレイヤー(自分以外)に awaiting-claim を見せる
   if (state.mode === 'online-host') {
-    // 捨てた人以外（=相手）にポン/ロン/パスの選択フェーズを見せる
     state.phase = 'awaiting-claim';
-    state.turn = playerIdx;  // 直前に捨てた人をturnとして表示
+    state.turn = playerIdx;
     broadcastState();
     render();
     return;
   }
-  // CPUモード
   if (playerIdx !== state.myIdx) {
-    // CPUが捨てた → 自分にポン/ロンの選択
     state.phase = 'awaiting-claim';
     state.turn = playerIdx;
     render();
     return;
   }
-  // 自分が捨てた → CPUのポン判定
   resolveClaimsFromCPUs();
 }
 
-// ───── CPU側の判定（ポンしない） ─────
 function resolveClaimsFromCPUs() {
-  // CPUは上がりもポンもしない仕様 → 次のプレイヤーへ
   proceedToNextTurn();
 }
 
-// ───── プレイヤーがポン宣言 ─────
 function declarePon() {
   const lastTile = state.lastDiscard.tile;
   const me = getMe();
@@ -2318,13 +2105,9 @@ function declarePon() {
     return;
   }
 
-  // ポン用ステート初期化
-  // selectedIds: タップ順に並ぶ手牌の選択（最大2枚）
-  // arrangement: 確定後の3枚の並び順を [tile, tile, tile] で保持。tile.isDiscard=true は捨て牌
   window._ponState = {
     lastTile,
-    selectedIds: [],
-    arrangement: null  // 並び替え段階に入ったら配列を入れる
+    slots: [null, null, null],
   };
 
   showPonModal();
@@ -2335,133 +2118,147 @@ function showPonModal() {
   const me = getMe();
   const lastTile = ps.lastTile;
 
-  let html;
-  if (!ps.arrangement) {
-    // ステップ1: 手牌から2枚選択
-    html = `
-      <h2>ポン！ 手牌から2枚選択</h2>
-      <p style="font-size:.9rem;margin-bottom:.6rem;">
-        「<span style="font-size:1.3rem;font-weight:700;color:var(--vermillion-dk);">${lastTile.c}</span>」と組み合わせて<strong>3文字の言葉</strong>を作ります。<br>
-        手牌から2枚をタップで選んでください。
-      </p>
-      <div style="background:#f9f4e3;border-radius:6px;padding:.8rem;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:.8rem;">
-        ${me.hand.map(t => {
-          const order = ps.selectedIds.indexOf(t.id);
-          const sel = order >= 0;
-          return `<div class="tile med pon-candidate${sel?' selected-pon':''}" data-id="${t.id}" onclick="togglePonCandidate(${t.id})" style="position:relative;">
-            ${t.c}
-            ${sel ? `<span style="position:absolute;top:-8px;right:-8px;background:var(--vermillion);color:white;width:20px;height:20px;border-radius:50%;font-size:.75rem;display:flex;align-items:center;justify-content:center;font-weight:700;">${order+1}</span>` : ''}
-          </div>`;
+  const usedIds = new Set(ps.slots.filter(Boolean).map(t => t.id));
+  const allFilled = ps.slots.every(Boolean);
+
+  const preview = ps.slots.map(s => s ? s.c : '？').join('');
+
+  const html = `
+    <h2>ポン！</h2>
+
+    <div style="margin-bottom:.8rem;">
+      <div style="font-size:.72rem;color:var(--vermillion-dk);letter-spacing:.2em;margin-bottom:.4rem;font-family:'Shippori Mincho',serif;">捨 て 牌（ポンで取得する牌）</div>
+      <div style="display:flex;justify-content:center;">
+        <div class="tile big" style="font-size:2rem;border:3px solid var(--vermillion);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 0 0 2px var(--vermillion),0 0 14px rgba(200,54,44,.4),0 2px 4px rgba(0,0,0,.4);">
+          ${lastTile.c}
+        </div>
+      </div>
+    </div>
+
+    <div style="width:100%;height:1px;background:rgba(0,0,0,.1);margin-bottom:.8rem;"></div>
+
+    <div style="margin-bottom:.6rem;">
+      <div style="font-size:.72rem;color:#666;letter-spacing:.2em;margin-bottom:.5rem;font-family:'Shippori Mincho',serif;text-align:center;">
+        タップした順に並びます。枠の牌をタップすると戻せます。
+      </div>
+      <div style="display:flex;gap:8px;justify-content:center;align-items:center;margin-bottom:.5rem;">
+        ${ps.slots.map((s, i) => {
+          if (s) {
+            const isDiscard = s.isDiscard;
+            return `<div onclick="ponRemoveFromSlot(${i})" title="タップで戻す" style="cursor:pointer;position:relative;">
+              <div class="tile big" style="font-size:2rem;${isDiscard?'border:3px solid var(--vermillion);':''}transition:transform .1s;">
+                ${s.c}
+              </div>
+              <div style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:.65rem;color:#999;white-space:nowrap;">戻す</div>
+            </div>`;
+          } else {
+            return `<div style="
+              width:52px;height:72px;
+              border:2px dashed rgba(0,0,0,.2);
+              border-radius:5px;
+              background:rgba(0,0,0,.04);
+              display:flex;align-items:center;justify-content:center;
+              font-size:1.8rem;color:rgba(0,0,0,.15);
+            ">${i+1}</div>`;
+          }
         }).join('')}
       </div>
-      <div style="text-align:center;font-size:.85rem;color:#888;margin-bottom:.8rem;">
-        ${ps.selectedIds.length}/2 枚選択中
+      <div style="text-align:center;font-family:'Klee One',serif;font-size:1.3rem;color:${allFilled?'#222':'#aaa'};margin-top:1.2rem;letter-spacing:.1em;">
+        ${allFilled ? `<strong style="font-size:1.6rem;">${preview}</strong>` : preview}
       </div>
-      <div class="modal-actions">
-        <button class="action-btn" onclick="closeModal()">キャンセル</button>
-        <button class="action-btn primary" onclick="proceedToPonArrange()" ${ps.selectedIds.length===2?'':'disabled'}>並び順を決める ▶</button>
+    </div>
+
+    <div style="width:100%;height:1px;background:rgba(0,0,0,.1);margin-bottom:.8rem;"></div>
+
+    <div style="margin-bottom:.8rem;">
+      <div style="font-size:.72rem;color:#666;letter-spacing:.2em;margin-bottom:.5rem;font-family:'Shippori Mincho',serif;">
+        手牌（タップして枠へ）
       </div>
-    `;
-  } else {
-    // ステップ2: 並び順の決定
-    const arr = ps.arrangement;
-    html = `
-      <h2>ポン！ 並び順を決める</h2>
-      <p style="font-size:.9rem;margin-bottom:.8rem;">
-        この3枚で <strong>3文字の言葉</strong> になるよう並べてください。<br>
-        <span style="color:#888;font-size:.85rem;">◀ ▶ ボタンで位置を入れ替えられます。捨て牌は赤枠で表示されます。</span>
-      </p>
-      <div style="background:#f9f4e3;border-radius:6px;padding:1rem;display:flex;gap:8px;justify-content:center;align-items:flex-end;margin-bottom:.5rem;">
-        ${arr.map((t, i) => `
-          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-            <div class="tile big" style="font-size:2rem;${t.isDiscard?'border:3px solid var(--vermillion);':''}">${t.c}</div>
-            <div style="display:flex;gap:2px;">
-              <button onclick="ponSwap(${i}, ${i-1})" ${i===0?'disabled':''} style="font-size:.9rem;padding:.2rem .5rem;background:#eee;border:1px solid #ccc;border-radius:3px;cursor:pointer;${i===0?'opacity:.3;':''}">◀</button>
-              <button onclick="ponSwap(${i}, ${i+1})" ${i===arr.length-1?'disabled':''} style="font-size:.9rem;padding:.2rem .5rem;background:#eee;border:1px solid #ccc;border-radius:3px;cursor:pointer;${i===arr.length-1?'opacity:.3;':''}">▶</button>
-            </div>
-          </div>
-        `).join('')}
+      <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;">
+        ${me.hand.map(t => {
+          const inSlot = usedIds.has(t.id);
+          return `<div class="tile med${inSlot ? '' : ' pon-candidate'}" style="${inSlot ? 'opacity:.25;' : 'cursor:pointer;'}" onclick="${inSlot ? '' : `ponAddToSlot(${t.id}, false)`}">${t.c}</div>`;
+        }).join('')}
+        ${(() => {
+          const discardInSlot = ps.slots.some(s => s && s.isDiscard);
+          return `<div class="tile med${discardInSlot ? '' : ' pon-candidate'}" style="border:2px solid var(--vermillion) !important;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 0 0 2px var(--vermillion),0 2px 4px rgba(0,0,0,.4);${discardInSlot?'opacity:.3;':'cursor:pointer;'}" onclick="${discardInSlot ? '' : `ponAddToSlot(${lastTile.id}, true)`}" title="捨て牌（ポンで取得）">${lastTile.c}</div>`;
+        })()}
       </div>
-      <div style="text-align:center;font-size:1.1rem;font-family:'Klee One',serif;color:var(--ink);margin:1rem 0;">
-        できる言葉： <strong style="font-size:1.4rem;">${arr.map(t=>t.c).join('')}</strong>
-      </div>
-      <p style="font-size:.8rem;color:#888;text-align:center;margin-bottom:.6rem;">※ 言葉の正当性は対戦相手と確認してください</p>
-      <div class="modal-actions">
-        <button class="action-btn" onclick="ponBackToSelect()">◀ 戻る</button>
-        <button class="action-btn danger" onclick="confirmPonFinal()">ポン確定！</button>
-      </div>
-    `;
-  }
+    </div>
+
+    <div class="modal-actions">
+      <button class="action-btn" onclick="ponClearAll()">全クリア</button>
+      <button class="action-btn" onclick="closeModal();window._ponState=null;">キャンセル</button>
+      <button class="action-btn danger" onclick="confirmPonFinal()" ${allFilled ? '' : 'disabled'}>ポ ン 確 定 ！</button>
+    </div>
+    ${ps.errorMsg ? `<div style="margin-top:.7rem;padding:.5rem .8rem;background:rgba(200,54,44,.12);border:1px solid var(--vermillion);border-radius:4px;color:var(--vermillion-dk);font-size:.9rem;text-align:center;font-weight:700;">⚠ ${ps.errorMsg}</div>` : ''}
+  `;
   showModalWithHTML(html);
 }
 
-function togglePonCandidate(tileId) {
+function ponAddToSlot(tileId, isDiscard) {
   const ps = window._ponState;
-  const idx = ps.selectedIds.indexOf(tileId);
-  if (idx >= 0) {
-    ps.selectedIds.splice(idx, 1);
-  } else {
-    if (ps.selectedIds.length >= 2) return;
-    ps.selectedIds.push(tileId);
-  }
-  showPonModal();
-}
-
-function proceedToPonArrange() {
-  const ps = window._ponState;
-  if (ps.selectedIds.length !== 2) return;
+  ps.errorMsg = null;
   const me = getMe();
-  const t1 = me.hand.find(t => t.id === ps.selectedIds[0]);
-  const t2 = me.hand.find(t => t.id === ps.selectedIds[1]);
-  // デフォルト並び順：選んだ順 + 捨て牌（末尾）
-  ps.arrangement = [
-    { id: t1.id, c: t1.c, isDiscard: false },
-    { id: t2.id, c: t2.c, isDiscard: false },
-    { id: ps.lastTile.id, c: ps.lastTile.c, isDiscard: true }
-  ];
+  if (ps.slots.some(s => s && s.id === tileId)) return;
+  const emptyIdx = ps.slots.findIndex(s => s === null);
+  if (emptyIdx < 0) return;
+  let c;
+  if (isDiscard) {
+    c = ps.lastTile.c;
+  } else {
+    const t = me.hand.find(t => t.id === tileId);
+    if (!t) return;
+    c = t.c;
+  }
+  ps.slots[emptyIdx] = { id: tileId, c, isDiscard };
   showPonModal();
 }
 
-function ponBackToSelect() {
-  window._ponState.arrangement = null;
+function ponRemoveFromSlot(slotIdx) {
+  const ps = window._ponState;
+  ps.errorMsg = null;
+  ps.slots[slotIdx] = null;
   showPonModal();
 }
 
-function ponSwap(i, j) {
-  const arr = window._ponState.arrangement;
-  if (j < 0 || j >= arr.length) return;
-  [arr[i], arr[j]] = [arr[j], arr[i]];
+function ponClearAll() {
+  window._ponState.slots = [null, null, null];
+  window._ponState.errorMsg = null;
   showPonModal();
 }
 
 function confirmPonFinal() {
   const ps = window._ponState;
+  if (!ps.slots.every(Boolean)) return;
+  if (!ps.slots.some(s => s && s.isDiscard)) {
+    ps.errorMsg = '捨て牌を含んでいません';
+    showPonModal();
+    return;
+  }
+  const arrangement = ps.slots.map(s => ({
+    id: s.id, c: s.c, isDiscard: s.isDiscard
+  }));
   closeModal();
   if (isGuest()) {
-    sendActionToHost({ type: 'pon', arrangement: ps.arrangement });
+    sendActionToHost({ type: 'pon', arrangement });
   } else {
-    hostExecutePon(ps.arrangement);
+    hostExecutePon(arrangement);
   }
   window._ponState = null;
 }
 
-// ホスト権威：ポン処理本体
 function hostExecutePon(arrangement, ponByIdx) {
-  // ポンを実行するプレイヤーが指定されていない場合は、ホスト自身が呼び出した想定
   if (ponByIdx === undefined || ponByIdx === null) ponByIdx = state.myIdx;
   const ponPlayer = state.players[ponByIdx];
 
-  // 手牌から「捨て牌以外」を取り出し、捨て牌は state.discards から取得
   const orderedTiles = arrangement.map(a => {
     if (a.isDiscard) {
       const taken = state.discards.pop();
       return taken.tile;
     } else {
       const idx = ponPlayer.hand.findIndex(t => t.id === a.id);
-      if (idx < 0) {
-        // 万一見つからなければスキップ（データ不整合）
-        return null;
-      }
+      if (idx < 0) return null;
       return ponPlayer.hand.splice(idx, 1)[0];
     }
   }).filter(Boolean);
@@ -2482,21 +2279,229 @@ function hostExecutePon(arrangement, ponByIdx) {
 }
 
 function executePon(arrangement) {
-  // 互換性: CPUモードの古いコードからの呼び出しに備える
   hostExecutePon(arrangement, state.myIdx);
 }
 
-// ───── プレイヤーがロン宣言 ─────
-function declareRon() {
-  // ロンは最後の捨て牌をもらって14枚で上がり宣言
-  // 単語の判定はプレイヤー間で行う想定 → 確認モーダルを出す
-  const lastTile = state.lastDiscard.tile;
+/* ============================================================
+   カン
+   ─────────────────────────────────────
+   - 自分のツモ後〜捨てる前に宣言可能
+   - 手牌から4枚以上を選んで言葉を構成
+   - ポンと同様、確定後は組み替え不可
+   - カン成立後、(枚数 - 3) 枚を山から補充してから1枚捨てる
+   ============================================================ */
+function declareKan() {
   const me = getMe();
-  // 仮想的に手牌に追加して上がり構成入力モーダルへ
+  if (me.hand.length < 4) {
+    alert('手牌が4枚以上ないとカンできません');
+    return;
+  }
+  // カン用ステート初期化
+  // slots: 動的に伸び縮みする配列。確定枚数 = slots の長さ（4以上）
+  window._kanState = {
+    slots: [null, null, null, null],  // 最低4枠から
+    errorMsg: null
+  };
+  showKanModal();
+}
+
+function showKanModal() {
+  const ks = window._kanState;
+  const me = getMe();
+
+  const usedIds = new Set(ks.slots.filter(Boolean).map(t => t.id));
+  const allFilled = ks.slots.every(Boolean);
+  const filledCount = ks.slots.filter(Boolean).length;
+  const preview = ks.slots.map(s => s ? s.c : '？').join('');
+
+  // 枠を増やせる条件：すべての既存枠が埋まっていて、かつ手牌に余裕がある（slot数+1 まで増やせる）
+  const canAddSlot = allFilled && me.hand.length > ks.slots.length;
+  // 枠を減らせる条件：4枠より多い かつ 末尾が空
+  const canRemoveSlot = ks.slots.length > 4 && ks.slots[ks.slots.length - 1] === null;
+
+  const html = `
+    <h2>カ ン！</h2>
+
+    <p style="font-size:.9rem;text-align:center;margin-bottom:.6rem;">
+      手牌から <strong>4枚以上</strong> を選んで言葉を構成してください。<br>
+      <span style="font-size:.8rem;color:#666;">確定後は組み替え不可。山から(枚数-3)枚を補充します。</span>
+    </p>
+
+    <div style="margin-bottom:.6rem;">
+      <div style="font-size:.72rem;color:#666;letter-spacing:.2em;margin-bottom:.5rem;font-family:'Shippori Mincho',serif;text-align:center;">
+        タップした順に並びます。枠の牌をタップすると戻せます。
+      </div>
+      <div style="display:flex;gap:6px;justify-content:center;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;">
+        ${ks.slots.map((s, i) => {
+          if (s) {
+            return `<div onclick="kanRemoveFromSlot(${i})" title="タップで戻す" style="cursor:pointer;position:relative;">
+              <div class="tile big" style="font-size:2rem;transition:transform .1s;">
+                ${s.c}
+              </div>
+              <div style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:.65rem;color:#999;white-space:nowrap;">戻す</div>
+            </div>`;
+          } else {
+            return `<div style="
+              width:52px;height:72px;
+              border:2px dashed rgba(0,0,0,.2);
+              border-radius:5px;
+              background:rgba(0,0,0,.04);
+              display:flex;align-items:center;justify-content:center;
+              font-size:1.8rem;color:rgba(0,0,0,.15);
+            ">${i+1}</div>`;
+          }
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:.4rem;justify-content:center;margin-top:1.4rem;">
+        <button class="action-btn" onclick="kanAddSlot()" ${canAddSlot?'':'disabled'} style="font-size:.8rem;padding:.35rem .8rem;">＋ 枠を増やす</button>
+        <button class="action-btn" onclick="kanRemoveSlot()" ${canRemoveSlot?'':'disabled'} style="font-size:.8rem;padding:.35rem .8rem;">－ 枠を減らす</button>
+      </div>
+      <div style="text-align:center;font-family:'Klee One',serif;font-size:1.3rem;color:${allFilled?'#222':'#aaa'};margin-top:1rem;letter-spacing:.1em;">
+        ${allFilled ? `<strong style="font-size:1.6rem;">${preview}</strong>` : preview}
+        <span style="font-size:.75rem;color:#888;margin-left:.5rem;">（${ks.slots.length}文字）</span>
+      </div>
+    </div>
+
+    <div style="width:100%;height:1px;background:rgba(0,0,0,.1);margin-bottom:.8rem;"></div>
+
+    <div style="margin-bottom:.8rem;">
+      <div style="font-size:.72rem;color:#666;letter-spacing:.2em;margin-bottom:.5rem;font-family:'Shippori Mincho',serif;">
+        手牌（タップして枠へ）
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center;">
+        ${me.hand.map(t => {
+          const inSlot = usedIds.has(t.id);
+          return `<div class="tile med${inSlot ? '' : ' pon-candidate'}" style="${inSlot ? 'opacity:.25;' : 'cursor:pointer;'}" onclick="${inSlot ? '' : `kanAddToSlot(${t.id})`}">${t.c}</div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="action-btn" onclick="kanClearAll()">全クリア</button>
+      <button class="action-btn" onclick="closeModal();window._kanState=null;">キャンセル</button>
+      <button class="action-btn danger" onclick="confirmKanFinal()" ${allFilled ? '' : 'disabled'}>カ ン 確 定 ！</button>
+    </div>
+    ${ks.errorMsg ? `<div style="margin-top:.7rem;padding:.5rem .8rem;background:rgba(200,54,44,.12);border:1px solid var(--vermillion);border-radius:4px;color:var(--vermillion-dk);font-size:.9rem;text-align:center;font-weight:700;">⚠ ${ks.errorMsg}</div>` : ''}
+  `;
+  showModalWithHTML(html);
+}
+
+function kanAddToSlot(tileId) {
+  const ks = window._kanState;
+  ks.errorMsg = null;
+  const me = getMe();
+  if (ks.slots.some(s => s && s.id === tileId)) return;
+  const emptyIdx = ks.slots.findIndex(s => s === null);
+  if (emptyIdx < 0) return;
+  const t = me.hand.find(t => t.id === tileId);
+  if (!t) return;
+  ks.slots[emptyIdx] = { id: tileId, c: t.c };
+  showKanModal();
+}
+
+function kanRemoveFromSlot(slotIdx) {
+  const ks = window._kanState;
+  ks.errorMsg = null;
+  ks.slots[slotIdx] = null;
+  // 末尾を詰めて、空いた穴を前にずらす
+  const filled = ks.slots.filter(Boolean);
+  const emptyCount = ks.slots.length - filled.length;
+  ks.slots = [...filled, ...new Array(emptyCount).fill(null)];
+  showKanModal();
+}
+
+function kanAddSlot() {
+  const ks = window._kanState;
+  const me = getMe();
+  if (ks.slots.length >= me.hand.length) return;
+  ks.slots.push(null);
+  ks.errorMsg = null;
+  showKanModal();
+}
+
+function kanRemoveSlot() {
+  const ks = window._kanState;
+  if (ks.slots.length <= 4) return;
+  if (ks.slots[ks.slots.length - 1] !== null) return;
+  ks.slots.pop();
+  ks.errorMsg = null;
+  showKanModal();
+}
+
+function kanClearAll() {
+  const ks = window._kanState;
+  ks.slots = ks.slots.map(() => null);
+  ks.errorMsg = null;
+  showKanModal();
+}
+
+function confirmKanFinal() {
+  const ks = window._kanState;
+  if (!ks.slots.every(Boolean)) return;
+  // 牌IDの順序を arrangement として送る
+  const arrangement = ks.slots.map(s => ({ id: s.id, c: s.c }));
+  closeModal();
+  if (isGuest()) {
+    sendActionToHost({ type: 'kan', arrangement });
+  } else {
+    hostExecuteKan(arrangement, state.myIdx);
+  }
+  window._kanState = null;
+}
+
+// ホスト権威：カン処理本体
+function hostExecuteKan(arrangement, kanByIdx) {
+  if (kanByIdx === undefined || kanByIdx === null) kanByIdx = state.myIdx;
+  const kanPlayer = state.players[kanByIdx];
+  const kanSize = arrangement.length;
+
+  // 手牌から指定IDの牌を抜き取り、arrangement の順序通りに並べる
+  const orderedTiles = arrangement.map(a => {
+    const idx = kanPlayer.hand.findIndex(t => t.id === a.id);
+    if (idx < 0) return null;
+    return kanPlayer.hand.splice(idx, 1)[0];
+  }).filter(Boolean);
+
+  if (orderedTiles.length !== kanSize) {
+    // データ不整合 → 抜き取った分は手牌に戻す
+    orderedTiles.forEach(t => kanPlayer.hand.push(t));
+    return;
+  }
+
+  // メルドに登録（type: 'kan' で区別）
+  kanPlayer.melds.push({ type: 'kan', tiles: orderedTiles });
+  log(`${kanPlayer.name} 「カン！」（${kanSize}文字）`, true);
+
+  if (isHost()) hostBroadcast({ type: 'declaration', text: 'カ ン' });
+  showDeclaration('カ ン');
+
+  // (kanSize - 3) 枚を山から補充
+  const drawCount = kanSize - 3;
+  for (let i = 0; i < drawCount; i++) {
+    if (state.wall.length === 0) break;
+    const tile = state.wall.pop();
+    if (!kanPlayer.isCPU) tile.slotId = 'pool';
+    kanPlayer.hand.push(tile);
+    if (kanByIdx === state.myIdx || (!kanPlayer.isCPU)) {
+      // 最後に引いた牌をハイライト
+      state.lastDrawnId = tile.id;
+    }
+    log(`${kanPlayer.name} がカン補充ツモ（${i+1}/${drawCount}）`);
+  }
+
+  state.turn = kanByIdx;
+  state.phase = 'discard';
+  state.selectedTileId = null;
+
+  if (isHost()) broadcastState();
+  render();
+}
+
+function declareRon() {
+  const lastTile = state.lastDiscard.tile;
   showWinSubmissionModal('ron', lastTile);
 }
 
-// ───── パス ─────
 function passClaim() {
   if (isGuest()) {
     sendActionToHost({ type: 'pass' });
@@ -2506,22 +2511,16 @@ function passClaim() {
 }
 
 function hostPassClaim(fromIdx) {
-  // 複数人モードでは「全員からのパス確認」が本当は必要だが、
-  // 簡易実装として「最初にパスした人 or 最後にパスした人」が来た時点で次に進める。
-  // 友人対戦：lastDiscardをクリアして次のプレイヤーへ。
-  // 全員がパスする前に誰かがポンを宣言すると、その時点でphaseが変わるのでパスは無効になる。
   state.lastDiscard = null;
   state.phase = 'discard';
   if (isHost()) broadcastState();
   proceedToNextTurn();
 }
 
-// ───── ツモ上がり宣言 ─────
 function declareTsumo() {
   showWinSubmissionModal('tsumo', null);
 }
 
-// ───── 上がり構成入力モーダル ─────
 function showWinSubmissionModal(kind, ronTile) {
   const me = getMe();
   const allTiles = [...me.hand];
@@ -2536,10 +2535,19 @@ function showWinSubmissionModal(kind, ronTile) {
     return;
   }
 
-  // モーダルHTML
+  // メルドの内訳説明文（ポン/カンで言葉の長さが違うため）
+  let meldSummary = '';
+  if (meldsCount > 0) {
+    const meldDescs = me.melds.map(m => {
+      const len = m.tiles.length;
+      return m.type === 'kan' ? `${len}文字（カン）` : `${len}文字（ポン）`;
+    });
+    meldSummary = `<br><span style="font-size:.85rem;color:#666;">公開済み: ${meldDescs.join(' ／ ')}</span>`;
+  }
+
   let html = `
     <h2>上 が り 構 成 を 確 定</h2>
-    <p>各組をタップで埋めて、<strong>3文字×${need3}組 + 2文字×1組</strong> を確定してください。</p>
+    <p>各組をタップで埋めて、<strong>3文字×${need3}組 + 2文字×1組</strong> を確定してください。${meldSummary}</p>
     <p style="font-size:.85rem;opacity:.75;margin-bottom:.6rem;">※ 言葉の正当性は対戦相手と話し合って判定してください</p>
 
     <div id="groupSlots"></div>
@@ -2550,9 +2558,10 @@ function showWinSubmissionModal(kind, ronTile) {
     </div>
   `;
   if (meldsCount > 0) {
-    html += `<div style="margin-top:.7rem;"><div style="font-size:.75rem;color:#888;letter-spacing:.2em;margin-bottom:.3rem;">確定済み（メルド）：</div><div style="display:flex;gap:6px;flex-wrap:wrap;">`;
+    html += `<div style="margin-top:.7rem;"><div style="font-size:.75rem;color:#888;letter-spacing:.2em;margin-bottom:.3rem;">確定済み（公開牌）：</div><div style="display:flex;gap:6px;flex-wrap:wrap;">`;
     me.melds.forEach((m) => {
-      html += `<div class="meld" style="border-color:#888;">${m.tiles.map(t=>`<div class="tile small">${t.c}</div>`).join('')}</div>`;
+      const borderColor = m.type === 'kan' ? '#c8362c' : '#888';
+      html += `<div class="meld" style="border-color:${borderColor};">${m.tiles.map(t=>`<div class="tile small">${t.c}</div>`).join('')}</div>`;
     });
     html += `</div></div>`;
   }
@@ -2566,22 +2575,15 @@ function showWinSubmissionModal(kind, ronTile) {
 
   showModalWithHTML(html);
 
-  // 上がり構築用ステート初期化
   winBuilder = {
-    kind,
-    ronTile,
+    kind, ronTile,
     pool: allTiles.slice(),
     groups: [],
-    need3,
-    need2
+    need3, need2
   };
-  // 3文字グループ ×N + 2文字グループ ×1
   for (let i = 0; i < need3; i++) winBuilder.groups.push({size:3, tiles:[], slotId:`g${i}`});
   winBuilder.groups.push({size:2, tiles:[], slotId:`g4`});
 
-  // 現在の手牌のスロット振り分け状況からプリフィル
-  // me.hand のタイルが slotId='g0'〜'g4' を持っていれば、対応するgroupに入れる
-  // ロン牌は新規追加なので未配置のまま
   for (const tile of me.hand) {
     if (!tile.slotId || tile.slotId === 'pool') continue;
     const group = winBuilder.groups.find(g => g.slotId === tile.slotId);
@@ -2597,7 +2599,6 @@ let winBuilder = null;
 
 function renderWinBuilder() {
   if (!winBuilder) return;
-  // 未配置の牌
   const used = new Set(winBuilder.groups.flatMap(g => g.tiles.map(t=>t.id)));
   const unassigned = winBuilder.pool.filter(t => !used.has(t.id));
   const ut = document.getElementById('unassignedTiles');
@@ -2610,7 +2611,6 @@ function renderWinBuilder() {
       ).join('');
     }
   }
-  // スロット
   const gs = document.getElementById('groupSlots');
   if (gs) {
     gs.innerHTML = winBuilder.groups.map((g,i) => {
@@ -2632,7 +2632,6 @@ function renderWinBuilder() {
         </div>`;
     }).join('');
   }
-  // ボタン状態
   const btn = document.getElementById('confirmWinBtn');
   if (btn) {
     const allFilled = winBuilder.groups.every(g => g.tiles.length === g.size);
@@ -2643,12 +2642,10 @@ function renderWinBuilder() {
 function addToFirstAvailable(tileId) {
   const t = winBuilder.pool.find(x => x.id === tileId);
   if (!t) return;
-  // 既に配置されていれば一旦削除（重複防止）
   for (const g of winBuilder.groups) {
     const idx = g.tiles.findIndex(x => x.id === tileId);
     if (idx >= 0) g.tiles.splice(idx,1);
   }
-  // 最初の空きグループへ
   for (const g of winBuilder.groups) {
     if (g.tiles.length < g.size) {
       g.tiles.push(t);
@@ -2678,15 +2675,12 @@ function resetWinBuilder() {
   renderWinBuilder();
 }
 
-// ───── 上がり確定 ─────
 function confirmWin(kind, ronTileId) {
-  // 全グループの単語と、メルドの単語をリスト化
   const me = getMe();
   const meldWords = me.melds.map(m => m.tiles.map(t=>t.c).join(''));
   const builderWords = winBuilder.groups.map(g => g.tiles.map(t=>t.c).join(''));
   const allWords = [...meldWords, ...builderWords];
 
-  // 確認モーダル：すべての言葉が実在するか相手と確認
   let html = `
     <h2 style="text-align:center;">上 が り 宣 言</h2>
     <p style="text-align:center;">以下の言葉で上がりを宣言します。<br><strong>対戦相手と確認し、すべて実在する言葉なら確定してください。</strong></p>
@@ -2713,53 +2707,42 @@ function finalizeWin(kind, ronTileId) {
   const builderWords = winBuilder.groups.map(g => g.tiles.map(t=>t.c).join(''));
   const allWords = [...meldWords, ...builderWords];
 
-  // CPUモード：相手承認が不要 → 直接上がり画面へ
   if (!isOnline()) {
     hostFinalizeWin(kind, state.myIdx, allWords);
     return;
   }
 
-  // 友人対戦：相手全員の承認を求める
   if (isGuest()) {
     sendActionToHost({ type: 'win-claim', kind, playerIdx: state.myIdx, words: allWords });
     showWinPendingScreen(allWords);
     return;
   }
-  // ホストが上がる側
   startApprovalFlow(kind, state.myIdx, allWords);
 }
 
-// ホスト：承認フロー開始（誰が上がろうと、ホストが集計の中心）
 function startApprovalFlow(kind, claimerIdx, words) {
-  // 承認が必要な人数 = 全員 - 1（上がる人本人を除く）
   const needCount = state.players.length - 1;
   window._pendingWin = {
     kind, claimerIdx, words,
-    approvedSet: new Set(),     // 承認済みプレイヤーIdx
+    approvedSet: new Set(),
     rejected: false,
     needCount
   };
-  // 上がる人が自分でない他の全員に承認モーダルを送信
   state.players.forEach((p, i) => {
     if (i === claimerIdx) return;
     if (i === state.myIdx) {
-      // ホスト自身が承認する側 → ローカルでモーダル表示
       showWinApprovalModal(kind, claimerIdx, words);
     } else {
-      // ゲストに送信
       hostSendTo(i, { type: 'win-pending', kind, playerIdx: claimerIdx, words });
     }
   });
-  // 上がる人本人 → 待機画面
   if (claimerIdx === state.myIdx) {
     showWinPendingScreen(words);
   } else {
-    // 上がりを宣言したのはゲスト → そのゲストに「申請受付済み」通知
     hostSendTo(claimerIdx, { type: 'win-claimer-pending', words });
   }
 }
 
-// 上がりを宣言した人が見る待機画面
 function showWinPendingScreen(words) {
   let html = `
     <div style="text-align:center;">
@@ -2777,7 +2760,6 @@ function showWinPendingScreen(words) {
   showModalWithHTML(html);
 }
 
-// 承認状況を更新（ホスト用）
 function updateApprovalProgress() {
   const pw = window._pendingWin;
   if (!pw) return;
@@ -2787,7 +2769,6 @@ function updateApprovalProgress() {
   }
 }
 
-// 上がりを承認するか判断する側が見るモーダル
 function showWinApprovalModal(kind, playerIdx, words) {
   const claimer = state.players[playerIdx];
   let html = `
@@ -2810,20 +2791,16 @@ function showWinApprovalModal(kind, playerIdx, words) {
   showModalWithHTML(html);
 }
 
-// 承認した
 function approveWinApproval() {
   closeModal();
   if (isGuest()) {
     sendActionToHost({ type: 'win-approved' });
-    // ゲストは待機画面に切り替え
     showWaitingForOthersScreen('approved');
   } else {
-    // ホスト自身が承認 → ローカル集計
     handleApproveResponse(null, true, state.myIdx);
   }
 }
 
-// 却下した
 function rejectWinApproval() {
   closeModal();
   if (isGuest()) {
@@ -2845,24 +2822,20 @@ function showWaitingForOthersScreen(myChoice) {
   showModalWithHTML(html);
 }
 
-// ホスト：承認応答を受け取った（ゲストからのconn 또는 ホスト自身）
 function handleApproveResponse(c, approved, fromIdx) {
   const pw = window._pendingWin;
   if (!pw) return;
-  // 送信元のプレイヤーIdxを決定
   let idx = fromIdx;
   if (idx === undefined && c) {
     const hc = hostConns.find(h => h.conn === c);
     if (hc) idx = hc.playerIdx;
   }
   if (idx === undefined) return;
-  if (idx === pw.claimerIdx) return; // 上がる本人は無視
+  if (idx === pw.claimerIdx) return;
 
   if (!approved) {
-    // 1人でも却下 → チョンボ扱い、全員に通知
     pw.rejected = true;
     window._pendingWin = null;
-    // 全プレイヤーに却下通知（モーダルを閉じてゲーム続行）
     hostBroadcast({ type: 'win-rejected-notice' });
     closeModal();
     log('上がりは却下されました（チョンボ扱い）。ゲーム続行', true);
@@ -2872,13 +2845,10 @@ function handleApproveResponse(c, approved, fromIdx) {
   }
 
   pw.approvedSet.add(idx);
-  // 進捗を全員に通知
   hostBroadcast({ type: 'approval-progress', approved: pw.approvedSet.size, need: pw.needCount });
   updateApprovalProgress();
 
-  // 全員承認チェック
   if (pw.approvedSet.size >= pw.needCount) {
-    // 和了成立
     const { kind, claimerIdx, words } = pw;
     window._pendingWin = null;
     hostFinalizeWin(kind, claimerIdx, words);
@@ -2886,10 +2856,8 @@ function handleApproveResponse(c, approved, fromIdx) {
 }
 
 function hostFinalizeWin(kind, playerIdx, words) {
-  // 全クライアントに「ツモ/ロン」バナー表示と振り返り画面を見せる
   if (isHost()) {
     hostBroadcast({ type: 'declaration', text: kind === 'tsumo' ? 'ツ モ' : 'ロ ン' });
-    // 全プレイヤーの最終手牌を含めた振り返りデータを作成
     const reviewData = buildReviewData(playerIdx, kind, words);
     hostBroadcast({ type: 'win-review', reviewData });
   }
@@ -2904,12 +2872,9 @@ function hostFinalizeWin(kind, playerIdx, words) {
   }, 1200);
 }
 
-// 振り返り用データ構築（全プレイヤーの手牌・メルド情報を集約）
 function buildReviewData(winnerIdx, kind, winnerWords) {
   return {
-    winnerIdx,
-    kind,
-    winnerWords,
+    winnerIdx, kind, winnerWords,
     players: state.players.map((p, i) => ({
       name: p.name,
       isWinner: i === winnerIdx,
@@ -2921,36 +2886,24 @@ function buildReviewData(winnerIdx, kind, winnerWords) {
   };
 }
 
-// 受信側用：ホストから送られてきた振り返りデータで画面表示
 function showRemoteWinScreen(playerIdx, kind, words) {
   setTimeout(() => showWinScreenWithWords(playerIdx, kind, words), 1200);
 }
 
-// ───── 次のプレイヤーへ ─────
 function proceedToNextTurn() {
   const next = (state.turn + 1) % state.players.length;
-  // 捨て牌が一瞬見えるよう最小限の間（200ms）
   setTimeout(() => doDraw(next), 200);
 }
 
-// ───── CPUのターン ─────
 function cpuTurn(playerIdx) {
   const p = state.players[playerIdx];
-  // CPUのロジック：単純に手牌+ツモ牌から、最も持ってる文字が少ない（孤立した）牌を捨てる
   const allTiles = [...p.hand];
   if (p.drawn) allTiles.push(p.drawn);
 
-  // 各文字の出現数カウント
   const charCount = {};
   allTiles.forEach(t => charCount[t.c] = (charCount[t.c]||0)+1);
 
-  // 「ー」「っ」「ん」「ゃ」「ゅ」「ょ」など単独で使いにくい文字を優先で捨てる
   const lonelyChars = ['ー','っ','ん','ゃ','ゅ','ょ'];
-
-  // 捨てる候補：
-  // 1) 単独（charCount === 1）の中から、lonelyCharsを優先
-  // 2) なければ単独の中からランダム
-  // 3) すべて2個以上ある場合 → 一番多い文字以外から1個
 
   let candidates = allTiles.filter(t => charCount[t.c] === 1);
   let lonely = candidates.filter(t => lonelyChars.includes(t.c));
@@ -2960,13 +2913,9 @@ function cpuTurn(playerIdx) {
   } else if (candidates.length > 0) {
     pick = candidates[Math.floor(Math.random()*candidates.length)];
   } else {
-    // ツモ牌があればツモ牌を捨てる
     pick = p.drawn || allTiles[Math.floor(Math.random()*allTiles.length)];
   }
 
-  // CPUは上がらない仕様 → ツモ上がり判定なし
-
-  // 牌を捨てる
   if (p.drawn && pick.id === p.drawn.id) {
     p.drawn = null;
   } else {
@@ -2981,7 +2930,6 @@ function cpuTurn(playerIdx) {
   doDiscard(playerIdx, pick);
 }
 
-// ───── 上がり画面 ─────
 function showWinScreen(playerIdx, kind) {
   const winner = state.players[playerIdx];
   const isYou = playerIdx === state.myIdx;
@@ -2990,7 +2938,6 @@ function showWinScreen(playerIdx, kind) {
   if (isYou && winBuilder) {
     allWords = allWords.concat(winBuilder.groups.map(g => g.tiles.map(t=>t.c).join('')));
   } else {
-    // CPUの場合は表示用の構成を再構築
     const allTiles = [...winner.hand];
     if (winner.drawn) allTiles.push(winner.drawn);
     const need3 = 4 - winner.melds.length;
@@ -3021,7 +2968,6 @@ function showWinScreen(playerIdx, kind) {
   showModalWithHTML(html);
 }
 
-// ───── 上がり画面（既知の単語リストで表示） ─────
 function showWinScreenWithWords(playerIdx, kind, words) {
   const winner = state.players[playerIdx];
   let html = `
@@ -3043,10 +2989,7 @@ function showWinScreenWithWords(playerIdx, kind, words) {
   showModalWithHTML(html);
 }
 
-// ───── 振り返り画面（友人対戦の上がり後、全プレイヤーの手牌可視化） ─────
 function showReviewScreen(reviewData) {
-  // 各プレイヤーのスロット構成を表示
-  // メルド数によりスロット数が変わる：need3 = 4 - melds, need2 = 1
   let html = `
     <div class="win-screen" style="text-align:left;">
       <h2 style="text-align:center;">${reviewData.kind === 'tsumo' ? 'ツ モ' : 'ロ ン'} 上 が り ！</h2>
@@ -3057,11 +3000,10 @@ function showReviewScreen(reviewData) {
   `;
   reviewData.players.forEach((p, i) => {
     const isWinner = (i === reviewData.winnerIdx);
-    // メルド表示
     let meldsHtml = '';
     if (p.melds && p.melds.length > 0) {
       meldsHtml = `
-        <div class="review-section-label">ポン公開牌</div>
+        <div class="review-section-label">公開牌（ポン・カン）</div>
         <div class="review-tile-row">
           ${p.melds.map(m => `
             <div class="review-group meld">
@@ -3072,7 +3014,6 @@ function showReviewScreen(reviewData) {
       `;
     }
 
-    // 手牌をslotIdごとにグルーピング
     const groupOrder = ['g0','g1','g2','g3','g4'];
     const tilesBySlot = {};
     groupOrder.forEach(s => tilesBySlot[s] = []);
@@ -3086,7 +3027,6 @@ function showReviewScreen(reviewData) {
       }
     });
 
-    // メルド数に応じて表示するスロット数を決定
     const need3 = 4 - (p.melds ? p.melds.length : 0);
     const slotsToShow = [];
     for (let k = 0; k < need3; k++) slotsToShow.push({ id: `g${k}`, cap: 3 });
@@ -3111,7 +3051,6 @@ function showReviewScreen(reviewData) {
       `;
     }
 
-    // 余剰牌
     let poolHtml = '';
     if (poolTiles.length > 0) {
       poolHtml = `
@@ -3147,12 +3086,10 @@ function showReviewScreen(reviewData) {
   `;
 
   showModalWithHTMLClass(html, 'review-modal');
-  // 再戦データを保持（再戦時の再レンダー用）
   window._lastReviewData = reviewData;
   window._myRematchClicked = false;
 }
 
-// クラス指定可能なモーダル表示
 function showModalWithHTMLClass(html, modalClass) {
   const modalContent = document.getElementById('modalContent');
   modalContent.className = 'modal' + (modalClass ? ' ' + modalClass : '');
@@ -3160,9 +3097,7 @@ function showModalWithHTMLClass(html, modalClass) {
   document.getElementById('modal').classList.add('show');
 }
 
-// ───── 流局 ─────
 function showDrawScreen() {
-  // オンラインの場合：再戦ボタン、CPUの場合：もう一度ボタン
   const isOnlineGame = isOnline();
   const html = `
     <div class="draw-screen">
@@ -3179,7 +3114,6 @@ function showDrawScreen() {
   showModalWithHTML(html);
 }
 
-// ───── 大宣言バナー ─────
 function showDeclaration(text) {
   const div = document.createElement('div');
   div.className = 'declaration-banner';
@@ -3188,7 +3122,6 @@ function showDeclaration(text) {
   setTimeout(() => div.remove(), 1400);
 }
 
-// ───── モーダル ─────
 function showModal(type) {
   if (type === 'rules') showRulesModal();
   else if (type === 'arrange') showArrangeModal();
@@ -3211,6 +3144,9 @@ function showRulesModal() {
     <h3>ポン</h3>
     <p>他の人が捨てた牌と <strong>自分の手牌2枚</strong> を組み合わせて <strong>3文字の言葉</strong> を作れる場合、「ポン」と宣言してその捨て牌をもらえます。3文字グループとして公開され、以後組み替え不可になります。ポン後は手牌から1枚捨てて自分の番が続きます。</p>
 
+    <h3>カン</h3>
+    <p>自分のターンで牌を引いた後、捨てる前に <strong>手牌から4枚以上</strong> を選んで <strong>4文字以上の言葉</strong> を作れる場合、「カン」と宣言できます。カンした牌は公開され組み替え不可。<br>カン成立後、<strong>(使った枚数 - 3) 枚を山から補充</strong> してから1枚捨てます。<br>例: 4枚カン→山から1枚補充／5枚カン→山から2枚補充。</p>
+
     <h3>ロン</h3>
     <p>他の人が捨てた牌が <strong>自分の上がり牌</strong> なら「ロン」と宣言して上がれます。</p>
 
@@ -3230,7 +3166,6 @@ function showRulesModal() {
 }
 
 function showArrangeModal() {
-  // 手牌の並び替え（あいうえお順 / カスタム）
   const html = `
     <h2>手 牌 整 理</h2>
     <p>手牌を並び替えます。</p>
@@ -3243,10 +3178,8 @@ function showArrangeModal() {
 }
 
 function sortMyHand() {
-  // プール内のタイルだけをあいうえお順にソートする（スロット内は触らない）
   const me = getMe();
   const order = [...BASIC_KANA, ...SPECIAL_KANA];
-  // hand配列を「順序を保ったまま」並び替え：プールのタイルだけ抽出してソートし、元の位置に戻す
   const poolIndices = [];
   const poolTiles = [];
   me.hand.forEach((t, i) => {
@@ -3284,7 +3217,6 @@ function returnToTitle() {
   document.getElementById('titleScreen').style.display = 'flex';
   document.getElementById('logBox').style.display = 'none';
   document.getElementById('logBox').innerHTML = '';
-  // PeerJS接続を全解除
   hostConns.forEach(hc => {
     if (hc.conn) { try { hc.conn.close(); } catch(e){} }
   });
@@ -3302,7 +3234,6 @@ function returnToTitle() {
 function restartGame() {
   closeModal();
   document.getElementById('logBox').innerHTML = '';
-  // オンラインモードでは requestRematch を使うので呼ばれない想定
   if (state && (state.mode === 'online-host' || state.mode === 'online-guest')) {
     returnToTitle();
     return;
@@ -3311,7 +3242,6 @@ function restartGame() {
   startCpuGame();
 }
 
-// ───── 友人対戦：再戦リクエスト ─────
 function requestRematch() {
   if (!isOnline()) {
     restartGame();
@@ -3325,12 +3255,10 @@ function requestRematch() {
     sendActionToHost({ type: 'rematch-request' });
     updateRematchProgress({ from: state.myIdx, requested: 1, need: state.players.length });
   } else {
-    // ホスト自身が再戦を希望
     handleRematchRequest(null, state.myIdx);
   }
 }
 
-// ホスト：再戦リクエストを受信
 function handleRematchRequest(c, fromIdx) {
   if (!isHost()) return;
   let idx = fromIdx;
@@ -3345,12 +3273,10 @@ function handleRematchRequest(c, fromIdx) {
   const need = state.players.length;
   const requested = window._rematchSet.size;
 
-  // 全員に進捗通知
   hostBroadcast({ type: 'rematch-progress', requested, need });
   updateRematchProgress({ requested, need });
 
   if (requested >= need) {
-    // 全員再戦希望 → 新ゲーム開始
     window._rematchSet = null;
     hostStartRematch();
   }
@@ -3364,7 +3290,6 @@ function updateRematchProgress(data) {
 }
 
 function hostStartRematch() {
-  // 各ゲストに rematch-start を送る
   hostConns.forEach(hc => {
     if (hc.conn && hc.conn.open) {
       try { hc.conn.send({ type: 'rematch-start', myIdx: hc.playerIdx }); } catch(e) {}
